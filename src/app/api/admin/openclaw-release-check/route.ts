@@ -22,7 +22,6 @@ import { locales } from "@/lib/i18n/config";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const DEFAULT_TEST_EMAIL = "test@example.com";
 const DEFAULT_UPGRADE_JOB_STALE_MINUTES = 30;
 
 function parseIsoDate(input: unknown) {
@@ -341,6 +340,7 @@ async function findInProgressOpenClawUpgradeJob(sid: string) {
       status: deploymentAgentJobs.status,
       payload: deploymentAgentJobs.payload,
       createdAt: deploymentAgentJobs.createdAt,
+      startedAt: deploymentAgentJobs.startedAt,
       updatedAt: deploymentAgentJobs.updatedAt,
     })
     .from(deploymentAgentJobs)
@@ -595,11 +595,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const latestVersion = await fetchLatestOpenClawVersion({ force: true });
   const testEmail =
     (process.env.OPENCLAW_RELEASE_TEST_EMAIL ?? "").trim() ||
-    (process.env.DEPLOY_TEST_EMAIL ?? "").trim() ||
-    DEFAULT_TEST_EMAIL;
+    (process.env.DEPLOY_TEST_EMAIL ?? "").trim();
+  if (!testEmail) {
+    logReleaseCheck("test_email_missing", {});
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "test_email_missing",
+        details:
+          "OPENCLAW_RELEASE_TEST_EMAIL or DEPLOY_TEST_EMAIL must be configured before enabling openclaw-release-check.",
+      },
+      { status: 503 }
+    );
+  }
+
+  const latestVersion = await fetchLatestOpenClawVersion({ force: true });
 
   const sessions = await db
     .select({

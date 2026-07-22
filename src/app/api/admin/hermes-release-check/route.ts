@@ -15,7 +15,6 @@ import { isHermesAgentVersionMatch } from "@/lib/openclaw/version";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const DEFAULT_TEST_EMAIL = "test@example.com";
 const DEFAULT_JOB_STALE_MINUTES = 30;
 
 function readFingerprint(serverFingerprint: unknown) {
@@ -197,12 +196,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const latestVersion = await fetchLatestHermesAgentVersion({ force: true });
   const testEmail =
     (process.env.HERMES_RELEASE_TEST_EMAIL ?? "").trim() ||
     (process.env.OPENCLAW_RELEASE_TEST_EMAIL ?? "").trim() ||
-    (process.env.DEPLOY_TEST_EMAIL ?? "").trim() ||
-    DEFAULT_TEST_EMAIL;
+    (process.env.DEPLOY_TEST_EMAIL ?? "").trim();
+  if (!testEmail) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "test_email_missing",
+        details:
+          "HERMES_RELEASE_TEST_EMAIL, OPENCLAW_RELEASE_TEST_EMAIL, or DEPLOY_TEST_EMAIL must be configured before enabling hermes-release-check.",
+      },
+      { status: 503 }
+    );
+  }
+
+  const latestVersion = await fetchLatestHermesAgentVersion({ force: true });
   const sessions = await db
     .select({
       sid: installSessions.id,
@@ -283,6 +293,7 @@ export async function POST(request: NextRequest) {
         jobType: deploymentAgentJobs.jobType,
         status: deploymentAgentJobs.status,
         createdAt: deploymentAgentJobs.createdAt,
+        startedAt: deploymentAgentJobs.startedAt,
       })
       .from(deploymentAgentJobs)
       .where(and(eq(deploymentAgentJobs.sid, target.sid), inArray(deploymentAgentJobs.status, ["pending", "running"])));
