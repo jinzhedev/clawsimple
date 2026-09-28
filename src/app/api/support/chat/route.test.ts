@@ -3,7 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { POST } from "./route";
-import { cleanDifyAnswer } from "@/lib/support/dify-answer";
+import { stripThinkBlocks } from "@/lib/support/strip-reasoning";
 const upstream = vi.fn();
 function request(
   body: unknown,
@@ -149,8 +149,8 @@ describe("Dify support boundary", () => {
     expect(upstream).toHaveBeenCalledTimes(10);
   });
   it("removes incomplete and multiple reasoning blocks", () => {
-    expect(cleanDifyAnswer("<think>hidden")).toBe("");
-    expect(cleanDifyAnswer("<think>a</think>Answer<think>b</think>")).toBe(
+    expect(stripThinkBlocks("<think>hidden")).toBe("");
+    expect(stripThinkBlocks("<think>a</think>Answer<think>b</think>")).toBe(
       "Answer",
     );
   });

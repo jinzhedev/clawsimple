@@ -1,5 +1,5 @@
 import { SupportChat } from "@/components/support/support-chat";
-import { isSupportChatEnabled } from "@/lib/support/config";
+import { isSupportChatEnabled } from "@/config/support";
 import { Hero } from "@/components/home/hero";
 import { TrustBanner } from "@/components/home/trust-banner";
 import { HowItWorks } from "@/components/home/how-it-works";

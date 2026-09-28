@@ -1,5 +1,5 @@
 import { SupportBackendError, type SupportBackend } from "./backend";
-import { cleanDifyAnswer } from "./dify-answer";
+import { stripThinkBlocks } from "./strip-reasoning";
 
 export function createDifyBackend(
   baseUrl: string,
@@ -41,7 +41,7 @@ export function createDifyBackend(
       }
       const answer =
         typeof result?.answer === "string"
-          ? cleanDifyAnswer(result.answer)
+          ? stripThinkBlocks(result.answer)
           : "";
       if (
         !answer ||

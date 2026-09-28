@@ -9,6 +9,7 @@ test-results/
 .wrangler/
 .env
 .env.*
+.dev.vars
 secrets.json
 /docs/
 /.agents/

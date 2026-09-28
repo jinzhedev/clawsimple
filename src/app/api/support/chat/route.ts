@@ -1,7 +1,7 @@
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { SupportBackendError } from "@/lib/support/backend";
-import { isSupportChatEnabled } from "@/lib/support/config";
+import { isSupportChatEnabled } from "@/config/support";
 import { getSupportBackend } from "@/lib/support/service";
 
 export const runtime = "nodejs";

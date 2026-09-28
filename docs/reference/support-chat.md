@@ -36,14 +36,14 @@ sequenceDiagram
 | ------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | [`support-chat.tsx`](../../src/components/support/support-chat.tsx) | 客服窗口、四种语言文案、等待和错误状态、当前页面聊天记录及新对话按钮 |
 | [`page.tsx`](../../src/app/[locale]/page.tsx)                       | 首页根据开关渲染入口                                                 |
-| [`config.ts`](../../src/lib/support/config.ts)                      | 判断 `SUPPORT_CHAT_PUBLIC_ENABLED` 是否严格等于 `true`               |
+| [`support.ts`](../../src/config/support.ts)                      | 服务端客服开关，判断 `SUPPORT_CHAT_PUBLIC_ENABLED` 是否严格等于 `true`               |
 | [`route.ts`](../../src/app/api/support/chat/route.ts)               | 本站 HTTP 接口、输入校验、匿名访客身份、限流、超时和错误响应         |
 | [`backend.ts`](../../src/lib/support/backend.ts)                    | 后端请求、回复和错误的统一契约                                       |
 | [`service.ts`](../../src/lib/support/service.ts)                    | 读取服务端配置、创建具体后端                                         |
 | [`dify-backend.ts`](../../src/lib/support/dify-backend.ts)          | Dify URL、鉴权、请求字段和响应转换                                   |
-| [`dify-answer.ts`](../../src/lib/support/dify-answer.ts)            | 删除 Dify 回答中的 `<think>` 块，包括未闭合块                        |
+| [`strip-reasoning.ts`](../../src/lib/support/strip-reasoning.ts)            | 通用 `stripThinkBlocks()` 函数，删除 `<think>` 块，包括未闭合块；由适配器按需调用                        |
 
-旧的 Dify 嵌入组件已移除，CSP 中对应的 `udify.app` 来源也已移除。客服窗口不加载第三方聊天 SDK。后端域名变化时，浏览器仍请求同源 API，因此不需要为新的聊天服务器修改浏览器 CSP 或跨域配置；网站服务端必须能访问新的上游地址。
+客服窗口不加载第三方聊天 SDK。后端域名变化时，浏览器仍请求同源 API，因此不需要为新的聊天服务器修改浏览器 CSP 或跨域配置；网站服务端必须能访问新的上游地址。
 
 ## 统一后端契约
 
@@ -218,6 +218,35 @@ export function getSupportBackend(): SupportBackend | null {
 pnpm exec vitest run src/app/api/support/chat/route.test.ts
 pnpm exec tsc --noEmit
 ```
+
+通用端到端检查只调用本站客服接口，不读取模型平台配置或密钥。更换后端后继续使用：
+
+```bash
+pnpm exec tsx scripts/support/check.ts --url http://localhost:3000
+pnpm exec tsx scripts/support/check.ts --url http://localhost:3000 --chat
+```
+
+默认检查来源和输入校验；`--chat` 额外检查首次问答、携带 cookie 续聊以及跨访客续聊。
+客服开关需要开启。若跨访客请求返回 502，只能说明请求未成功，不能据此认定权限隔离通过，
+需核对服务端日志，脚本以退出码 2 表示结果待确认；验证失败为 1，全部通过为 0。
+受保护的测试环境可用 `--headers-file <文件>` 加载访问认证请求头，
+文件格式为 JSON 字符串键值对象，保存在仓库外或被 Git 忽略的位置，不得提交密钥。
+
+Dify 专用检查用于诊断平台连接、应用认证和必填输入参数：
+
+```bash
+pnpm exec tsx scripts/support/check-dify.ts
+pnpm exec tsx scripts/support/check-dify.ts --chat
+```
+
+专用检查默认读取 `.env.local` 和 `.env`，也可用 `--env <文件>` 指定配置。
+更换平台时替换对应的专用检查即可。两个脚本的 `--chat` 都会产生模型调用，
+结果不输出密钥或聊天内容。
+
+通过反向隧道连接自建服务时，只转发所需 API 路径，其他路径返回 404。
+外部入口保留 Dify 应用密钥认证，不开放管理后台。隧道凭据和机器配置只保存在
+受限的部署环境中，不能提交到源码仓库。需要从网站实际运行环境再次验证连接，
+不能用本地网络测试替代云端验证。
 
 [`route.test.ts`](../../src/app/api/support/chat/route.test.ts) 使用 mock fetch，覆盖凭据不返回前端、推理清理、cookie 身份复用与伪造、跨域拦截、输入限制、错误映射、开关、本地限流以及根据配置生成 Dify URL 和转发会话字段。
 
