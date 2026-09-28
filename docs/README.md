@@ -15,6 +15,7 @@ everything flat.
 
 ## Key API Reference Docs
 
+- [`reference/support-chat.md`](reference/support-chat.md): support backend architecture, Dify configuration, provider replacement, session handling, validation, and rollback.
 - [`reference/deploy-api-lifecycle.md`](reference/deploy-api-lifecycle.md): user-facing deploy endpoints — creation, polling, removal, upgrade, listing
 - [`reference/deploy-api-runner.md`](reference/deploy-api-runner.md): runner agent endpoints — job claim/ack, config sync, token rotate, preset proxy, skills
 - [`reference/billing-api.md`](reference/billing-api.md): Stripe-integrated checkout, portal, usage credits, promo validation, seat lifecycle

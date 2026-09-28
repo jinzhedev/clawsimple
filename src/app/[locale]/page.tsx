@@ -1,3 +1,5 @@
+import { SupportChat } from "@/components/support/support-chat";
+import { isSupportChatEnabled } from "@/lib/support/config";
 import { Hero } from "@/components/home/hero";
 import { TrustBanner } from "@/components/home/trust-banner";
 import { HowItWorks } from "@/components/home/how-it-works";
@@ -31,6 +33,7 @@ export default async function HomePage({
   return (
     <div className="page-shell surface-stack min-h-screen overflow-x-clip">
       <PageViewTracker locale={locale} />
+      {isSupportChatEnabled() && <SupportChat locale={locale} />}
       {/* Hero Section - Client Component (Animation) */}
       <Hero
         locale={locale}

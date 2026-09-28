@@ -43,6 +43,14 @@ pnpm db:migrate
 pnpm db:check
 ```
 
+## Support Chat
+
+Homepage support uses Dify through the server-side `/api/support/chat` endpoint.
+Configure `DIFY_API_URL`, `DIFY_API_KEY`, and `SUPPORT_CHAT_SESSION_SECRET`;
+set `SUPPORT_CHAT_PUBLIC_ENABLED=true` after validating rollout requirements.
+Self-hosted and cloud Dify use the same adapter.
+See [the setup guide](docs/reference/support-chat.md) for configuration and backend replacement.
+
 Runner notify worker:
 
 ```bash

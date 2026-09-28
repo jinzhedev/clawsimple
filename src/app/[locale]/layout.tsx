@@ -12,8 +12,6 @@ import { locales, type Locale } from "@/lib/i18n/config";
 import { OrganizationJsonLd } from "@/components/seo/organization-json-ld";
 import { Toaster } from "@/components/ui/toaster";
 import { readPublicEnv } from "@/lib/env";
-// Dify embed temporarily disabled — see ISSUE-001 in QA report
-// import { DifyChat } from '@/components/support/dify-chat';
 import "../globals.css";
 
 const display = Instrument_Serif({
@@ -31,10 +29,10 @@ const body = Instrument_Sans({
 import { constructMetadata } from "@/lib/seo";
 
 const umamiWebsiteId = readPublicEnv(process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID);
-const umamiScript = readPublicEnv(
-  process.env.NEXT_PUBLIC_UMAMI_SCRIPT,
+const umamiScript = readPublicEnv(process.env.NEXT_PUBLIC_UMAMI_SCRIPT);
+const datafastWebsiteId = readPublicEnv(
+  process.env.NEXT_PUBLIC_DATAFAST_WEBSITE_ID,
 );
-const datafastWebsiteId = readPublicEnv(process.env.NEXT_PUBLIC_DATAFAST_WEBSITE_ID);
 const datafastDomain = readPublicEnv(process.env.NEXT_PUBLIC_DATAFAST_DOMAIN);
 
 export async function generateStaticParams() {
@@ -140,7 +138,6 @@ export default async function LocaleLayout({
               <Footer />
             </div>
             <Toaster />
-            {/* Dify embed temporarily disabled — see ISSUE-001 */}
           </NextIntlClientProvider>
         </ThemeProvider>
       </body>
