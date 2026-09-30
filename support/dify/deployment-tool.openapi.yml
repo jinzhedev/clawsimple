@@ -1,0 +1,25 @@
+openapi: 3.0.3
+info:
+  title: ClawSimple Support Deployment Lookup
+  version: 1.0.0
+servers:
+  - url: https://support-site.example.com
+paths:
+  /api/support/tools/deployments:
+    post:
+      operationId: list_my_deployments
+      description: Read deployment records for the authenticated account represented by the server-issued grant. No user or deployment identifier is accepted.
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          description: Server-provided authorization. Configure as a fixed runtime parameter, never an LLM-generated parameter.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Read-only deployment records, possibly empty, or login_required for a valid anonymous grant.
+        '401':
+          description: Authorization expired. Not an empty deployment list.
+        '503':
+          description: Lookup unavailable. Not an empty deployment list.

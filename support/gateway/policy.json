@@ -1,0 +1,32 @@
+{
+  "authentication": true,
+  "byok_only": true,
+  "cache_invalidate_on_update": true,
+  "cache_ttl": 0,
+  "collect_logs": false,
+  "rate_limiting_interval": 60,
+  "rate_limiting_limit": 20,
+  "rate_limiting_technique": "sliding",
+  "retry_max_attempts": 1,
+  "spend_limits": {
+    "enabled": true,
+    "rules": [
+      {
+        "id": "daily",
+        "enabled": true,
+        "limitType": "cost",
+        "limit": 3,
+        "window": 86400,
+        "technique": "fixed"
+      },
+      {
+        "id": "hourly",
+        "enabled": true,
+        "limitType": "cost",
+        "limit": 0.5,
+        "window": 3600,
+        "technique": "sliding"
+      }
+    ]
+  }
+}
