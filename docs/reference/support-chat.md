@@ -1,255 +1,108 @@
 # Support 客服后端实现与切换指南
 
-当前首页客服使用本站 React 窗口，通过 `POST /api/support/chat` 调用服务端，再由 Dify 适配器访问聊天服务。浏览器只依赖本站接口，不需要知道 Dify 的地址、密钥或请求协议。
+首页客服通过本站 `POST /api/support/chat` 调用后端。浏览器不直接访问 Dify，也不持有 Dify、工具或模型凭据。当前只实现 Dify，通过服务端适配器隔离平台协议。
 
-这使两类切换的改动范围比较明确：
+## 请求链路
 
-| 切换场景                                            | 需要修改                                                       | 生效方式                                     |
-| --------------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------- |
-| Dify 自建服务器搬迁、切换 Dify 应用或兼容的云端服务 | `DIFY_API_URL`、`DIFY_API_KEY`                                 | 更新网站服务端环境，重启或重新部署           |
-| Dify 内更换模型、提示词或知识库                     | Dify 应用配置                                                  | 按 Dify 应用的发布流程生效，网站协议保持不变 |
-| Dify 改为其他聊天平台或自建服务                     | 新增 `SupportBackend` 适配器，修改 `service.ts` 和对应环境配置 | 测试后部署网站代码                           |
+1. 本站校验 Origin、请求大小和问题，检查共享 IP 限流，再读取真实登录 Session。
+2. 签发有效期 120 秒的只读部署查询授权，不新增运行记录。会话标识签名绑定访客、账号及登录 Session；登录、退出、切换账号后，旧标识返回 `409 conversation_expired`。
+3. Dify 适配器检查 Chatflow 必填输入，再传入问题、绑定身份和工具授权。
+4. Chatflow 检索知识，Agent 经 Cloudflare AI Gateway 调用模型。需要查询部署时，调用本站只读工具；服务器重新检查 Session 并限定所属账号，模型不传账号 ID。
+5. Cloudflare 记录各次模型调用费用，并执行预算与总频率限制。最终回答以纯文本返回浏览器。
 
-当前只实现了 Dify，`service.ts` 固定选择 Dify。没有平台选择菜单、自动故障转移、灰度分流或会话迁移机制。“更换平台”仍需要开发适配器；现有边界使这项工作集中在服务端。
-
-## 请求链路和代码职责
-
-```mermaid
-sequenceDiagram
-    participant U as 首页 SupportChat
-    participant A as 本站 /api/support/chat
-    participant S as getSupportBackend
-    participant D as Dify 适配器
-    participant B as Dify Chat API
-    U->>A: query + 可选 conversationId
-    A->>S: 读取配置并创建后端
-    S-->>A: SupportBackend
-    A->>A: 校验来源、请求、访客 cookie 和限流
-    A->>D: chat(query, conversationId, visitorId, signal)
-    D->>B: POST /chat-messages
-    B-->>D: answer + conversation_id
-    D-->>A: answer + conversationId
-    A-->>U: JSON 回复 + 签名访客 cookie
-```
-
-| 文件                                                                | 职责                                                                 |
-| ------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| [`support-chat.tsx`](../../src/components/support/support-chat.tsx) | 客服窗口、四种语言文案、等待和错误状态、当前页面聊天记录及新对话按钮 |
-| [`page.tsx`](../../src/app/[locale]/page.tsx)                       | 首页根据开关渲染入口                                                 |
-| [`support.ts`](../../src/config/support.ts)                      | 服务端客服开关，判断 `SUPPORT_CHAT_PUBLIC_ENABLED` 是否严格等于 `true`               |
-| [`route.ts`](../../src/app/api/support/chat/route.ts)               | 本站 HTTP 接口、输入校验、匿名访客身份、限流、超时和错误响应         |
-| [`backend.ts`](../../src/lib/support/backend.ts)                    | 后端请求、回复和错误的统一契约                                       |
-| [`service.ts`](../../src/lib/support/service.ts)                    | 读取服务端配置、创建具体后端                                         |
-| [`dify-backend.ts`](../../src/lib/support/dify-backend.ts)          | Dify URL、鉴权、请求字段和响应转换                                   |
-| [`strip-reasoning.ts`](../../src/lib/support/strip-reasoning.ts)            | 通用 `stripThinkBlocks()` 函数，删除 `<think>` 块，包括未闭合块；由适配器按需调用                        |
-
-客服窗口不加载第三方聊天 SDK。后端域名变化时，浏览器仍请求同源 API，因此不需要为新的聊天服务器修改浏览器 CSP 或跨域配置；网站服务端必须能访问新的上游地址。
-
-## 统一后端契约
-
-`backend.ts` 定义以下接口：
-
-```ts
-export type SupportChatRequest = {
-  query: string;
-  conversationId?: string;
-  visitorId: string;
-  signal: AbortSignal;
-};
-
-export type SupportChatReply = {
-  answer: string;
-  conversationId: string;
-};
-
-export interface SupportBackend {
-  chat(request: SupportChatRequest): Promise<SupportChatReply>;
-}
-```
-
-- `query`：经本站接口校验并去除首尾空白的问题。
-- `conversationId`：后端返回的会话标识，首次对话不传。本站不解释其内部格式，也不把它当授权凭据。
-- `visitorId`：本站签发的匿名访客标识，由服务端提供，浏览器请求体不能指定它。
-- `signal`：合并客户端取消和 45 秒上游超时的取消信号，适配器应传给实际请求。
-- `answer`：供窗口按纯文本显示的回答。当前 UI 不执行 HTML，也不渲染 Markdown。
-
-Dify 适配器将通用字段转换成以下请求：
-
-```text
-POST <DIFY_API_URL 去除末尾斜杠>/chat-messages
-Authorization: Bearer <DIFY_API_KEY>
-Content-Type: application/json
-```
-
-```json
-{
-  "inputs": {},
-  "query": "用户问题",
-  "conversation_id": "首次为空字符串，后续为已有会话 ID",
-  "user": "服务端生成的匿名访客 ID",
-  "response_mode": "blocking",
-  "auto_generate_name": false
-}
-```
-
-上游返回的 `conversation_id` 转换为 `conversationId`。回答经过清理后必须非空，会话 ID 必须是非空字符串，否则返回后端错误。由于 `inputs` 固定为空，Dify 应用不能要求额外必填输入变量；如需这些变量，应修改适配器及相应配置。
-
-## 本站 API 的稳定边界
-
-浏览器发送：
-
-```json
-{
-  "query": "如何部署机器人？",
-  "conversationId": "可选的已有会话 ID"
-}
-```
-
-首次请求应省略 `conversationId`，不要发送示例占位符。成功响应为：
-
-```json
-{
-  "answer": "客服回答",
-  "conversationId": "上游返回的会话 ID"
-}
-```
-
-接口要求 `Origin` 与本站 origin 完全一致，并要求 `Content-Type` 以 `application/json` 开头。请求体最多 8192 字节；问题最多 2000 个 JavaScript 字符串代码单元且不能全为空白；会话 ID 最多 256 个代码单元，不能包含空格或 ASCII 控制字符。适配器选择新平台时，要确认其会话标识符合这个限制。
-
-| HTTP 状态 | 响应 `error`      | 当前触发条件                                     |
-| --------- | ----------------- | ------------------------------------------------ |
-| 400       | `invalid_request` | JSON 或字段不合法                                |
-| 403       | `forbidden`       | 来源不匹配，包括缺失 Origin                      |
-| 413       | `too_large`       | 请求体超过限制                                   |
-| 415       | `invalid_request` | Content-Type 不符合要求                          |
-| 429       | `rate_limited`    | 本地限流或上游返回 429                           |
-| 502       | `unavailable`     | 上游其他非成功状态、响应无效，或未分类异常       |
-| 503       | `unavailable`     | 开关未开启，或服务端配置缺失                     |
-| 504       | `unavailable`     | Dify 的 fetch 抛出异常，包括网络失败、取消或超时 |
-
-`SupportBackendError` 只接受 `429 | 502 | 504`。适配器用它表达已分类错误；不要把上游错误正文、密钥或内部地址放进返回给浏览器的错误信息。注意当前 504 也可能表示网络失败，不能仅凭这个状态认定发生了超时。
-
-所有经接口 `reply` 返回的响应包含 `Cache-Control: no-store` 和 `X-Request-Id`。进入后端调用阶段的请求会记录请求 ID、状态码和耗时；前置校验提前返回的请求不会进入这段日志。代码不记录问题、回答或密钥。
-
-## 配置与启用
-
-在网站服务端环境配置：
+## 配置
 
 ```dotenv
 SUPPORT_CHAT_PUBLIC_ENABLED=false
+SUPPORT_CHAT_MAX_QUERY_LENGTH=2000
+SUPPORT_CHAT_MAX_BODY_BYTES=8192
 DIFY_API_URL=https://support-api.example.com/v1
-DIFY_API_KEY=<Dify 应用 API 密钥>
-SUPPORT_CHAT_SESSION_SECRET=<至少 32 字节的随机秘密值>
+DIFY_API_KEY=<Chatflow 应用 API key>
+SUPPORT_CHAT_SESSION_SECRET=<至少 32 字符的随机秘密值>
 ```
 
-`DIFY_API_URL` 应填写 API 基础地址，包含服务实际要求的路径前缀，例如 `/v1`；不要填写网页聊天链接、管理后台地址或完整 `/chat-messages` 地址。代码只移除末尾一个斜杠后追加 `/chat-messages`。
+这些都是服务端变量。`DIFY_API_URL` 包含 `/v1`，不是网页或完整聊天接口地址。各网站实例使用相同签名秘密值和业务数据库。IP 限流使用 `support_rate_limit` 表，上线前须应用 `0067_support_ip_rate_limit` 迁移；不维护客服费用账本。生产迁移与切换须单独确认。
 
-这些变量都用于服务端，不使用 `NEXT_PUBLIC_` 前缀。`service.ts` 会对 URL 和 API key 去除首尾空白，两者任一缺失就不创建后端。路由还要求 session secret 非空。至少 32 字节是部署要求，代码目前没有校验 secret 长度。
+开关必须严格为 `true`。首页渲染可能受构建与缓存影响，修改开关后要重新部署并验证实际入口和 API。反向隧道只转发所需应用 API，保留应用鉴权，不开放管理后台。
 
-所有网站实例应使用相同的 session secret，以便识别同一访客。正常迁移后端时保留它；轮换会导致旧 cookie 校验失败，访客被重新识别。
+Dify 定义、英文知识与导入步骤见 [`support/dify/README.md`](../../support/dify/README.md)。
 
-设置 `SUPPORT_CHAT_PUBLIC_ENABLED=true` 后入口和 API 才启用。代码读取进程环境变量，不提供在线配置管理功能。修改部署平台变量后，应让新配置进入实际运行实例；首页可能受构建或缓存影响，因此开关变更也要重新部署并验证页面。设为 `false` 可关闭 API，新页面是否隐藏入口需要同时检查。
+## 代码职责
 
-公开启用前，需要确认网站服务端可访问 Dify HTTPS API，并在边缘层配置跨实例限流与费用保护。代码的内存 Map 仅提供单进程、每访客每分钟 10 次的限制；重启会丢失，多实例不共享，换访客身份也可能绕过，因此还需要 IP 或全局限制。Dify 管理后台和数据库无需向网站访客开放。
+| 文件                                             | 职责                                           |
+| ------------------------------------------------ | ---------------------------------------------- |
+| `src/components/support/support-chat.tsx`        | 首页窗口、登录变化时清空会话、控制台及邮件入口 |
+| `src/config/support.ts`                          | 客服开关、工具授权期限和执行限制               |
+| `src/app/api/support/chat/route.ts`              | 身份、会话签名、请求校验和工具授权签发         |
+| `src/lib/support/backend.ts`、`service.ts`       | 通用后端契约和装配                             |
+| `src/lib/support/dify-backend.ts`                | Dify 鉴权、必填输入检查、请求和响应转换        |
+| `src/lib/support/strip-reasoning.ts`             | 通用推理块清理                                 |
+| `src/lib/support/security.ts`                    | 会话签名、短期只读授权的签发和验证             |
+| `src/lib/support/rate-limit.ts`                  | 可信 IP 读取、地址归一化、共享数据库原子限流   |
+| `src/lib/support/deployments.ts`                 | 复查有效 Session，仅查询所属账号的部署         |
+| `src/app/api/support/tools/deployments/route.ts` | 只读部署工具接口                               |
 
-## 切换 Dify 服务器或应用
+## 后端契约与切换
 
-1. 在目标 Dify 环境准备聊天应用，迁移或重建知识库、提示词、模型配置及凭据，确认不需要额外必填 inputs。修改网站环境变量不会自动复制这些资源。
-2. 保存当前网站部署版本和原来的 URL、API key 配置，以便回滚。密钥保存在部署平台或约定的本地环境文件，不写入仓库。
-3. 在本地或预览环境配置目标 `DIFY_API_URL`、`DIFY_API_KEY`，保持 session secret 稳定，并开启客服开关。
-4. 通过首页发送问题，再发送依赖上一轮内容的问题，确认回复和连续对话；用独立浏览器会话确认访客隔离。检查纯文本显示、错误提示、邮件入口和超时表现。
-5. 验证通过后，将目标配置应用到生产部署。检查实际首页入口、API 响应及服务端请求日志；不要只确认环境变量已经保存。
-6. 更换了应用或无法保留历史会话时，让正在使用旧页面的用户点击“新对话”或刷新页面。当前前端不会自动识别后端已切换，也没有专门的迁移通知。
+`SupportBackend.chat()` 接收 `query`、可选 `conversationId`、`visitorId`、`toolGrant` 和取消 `signal`，返回 `{ answer, conversationId }`。适配器接收的是已校验的原始上游会话 ID；浏览器持有的是本站签名包装，不是账号授权。
 
-如果仅更换地址，并且应用、会话数据和访客映射都得到完整保留，旧会话才可能继续工作。不要把相同的 session secret 当作会话可迁移的保证，它只维护本站的访客身份。
+- 搬迁 Dify 或切换兼容服务：修改地址、应用 key，并重新绑定目标工作区的知识、工具和专用模型。不能只改地址就假定业务权限与预算仍有效。
+- 修改提示词或知识：更新项目源文件，在测试 Dify 中验证并发布；网站前端协议不变。
+- 更换其他 Agent 平台：新增 `SupportBackend` 实现，在 `service.ts` 装配；必须安全传递服务器授权，并让所有付费调用经过 AI Gateway。平台不支持这些约束时，工作范围超过字段转换。
 
-出现问题时，恢复旧 URL、API key 和对应部署；如暂时无法恢复，可关闭客服开关。回滚后，新后端产生的会话 ID 同样可能无法用于旧后端，用户仍可能需要开始新对话。当前没有自动重试到备用后端的逻辑。
+不实现多平台选择器、自动故障转移或历史迁移。换应用时开始新对话。相同签名秘密值只能保持本站身份，不能保证上游会话兼容。
 
-## 更换为其他后端平台
+## 接口与会话
 
-保持前端和本站 API 协议不变时，主要工作集中在新适配器及 `service.ts`。
+浏览器仅发送 `{ query, conversationId? }`，成功返回 `{ answer, conversationId }`。请求体不包含历史消息，历史由 Dify 按会话关联。请求体默认最多 8192 字节，由 `SUPPORT_CHAT_MAX_BODY_BYTES` 调节；问题默认最多 2000 个 UTF-16 代码单元（JavaScript `string.length`），由 `SUPPORT_CHAT_MAX_QUERY_LENGTH` 调节，前端输入框与后端校验使用同一配置。常用汉字或英文字母通常占 1 个代码单元，普通 emoji 通常占 2 个。签名会话仍最多 2048 个代码单元。Origin 必须与本站一致，Content-Type 为 JSON。
 
-1. 新建例如 `src/lib/support/example-backend.ts`，导出创建 `SupportBackend` 的工厂函数。将目标平台的鉴权、字段和响应转换全部放在适配器内。
-2. 实现 `chat()`：发送问题和稳定访客身份，正确续接会话，将上游响应转换为 `{ answer, conversationId }`，验证回答及会话 ID，并传递 `signal`。
-3. 将上游错误转换为 `SupportBackendError`。需要隐藏模型推理内容的平台，应实现对应的清理规则；Dify 的 `<think>` 清理不会自动应用到新适配器。
-4. 在 `service.ts` 读取新平台所需环境变量，配置不完整时返回 `null`，配置完整时返回新适配器。
-5. 补充适配器测试，调整现有依赖 Dify 请求格式的测试，再验证本站 API 和前端行为。
+两项配置只接受正的安全整数，未设置或格式无效时分别使用默认值。增加问题长度时，应同时给请求体预留 UTF-8 编码、JSON 转义和会话标识的空间；两项限制独立生效。例如可设置问题长度 4000、请求体 32768 字节。修改环境变量后重新部署（本地重启开发服务），并刷新页面以更新输入框限制。Dify 的六轮记忆窗口由流程定义单独配置。
 
-装配入口的改动形式如下，示例中的工厂函数需要先自行实现：
+| HTTP            | error                               | 含义                                 |
+| --------------- | ----------------------------------- | ------------------------------------ |
+| 400 / 413 / 415 | `invalid_request` / `too_large`     | 输入不合法或过大                     |
+| 403             | `forbidden`                         | 来源不匹配                           |
+| 409             | `conversation_expired`              | 会话签名、归属或期限不符             |
+| 429             | `rate_limited` / `budget_exhausted` | 请求额度或客服预算不足               |
+| 502 / 503 / 504 | `unavailable`                       | 配置关闭、上游失败、存储不可用或超时 |
 
-```ts
-import type { SupportBackend } from "./backend";
-import { createExampleBackend } from "./example-backend";
+错误不透传供应商正文。本站日志只记录请求 ID、状态与耗时，不记录问题、回答或凭据。匿名 cookie 为 HttpOnly、SameSite Strict，生产增加 Secure，期限一天；cookie 不代表登录。前端会在打开窗口、切回页面及定期检查时核对真实 Session，身份变化会清空并取消旧对话。
 
-export function getSupportBackend(): SupportBackend | null {
-  const baseUrl = process.env.EXAMPLE_SUPPORT_API_URL?.trim();
-  const apiKey = process.env.EXAMPLE_SUPPORT_API_KEY?.trim();
-  return baseUrl && apiKey ? createExampleBackend(baseUrl, apiKey) : null;
-}
-```
+工具只返回名称、记录状态、创建/完成时间，最多 20 条及 `hasMore`。它不返回 IP、内部地址、密钥或服务器指纹，也不查询实时健康、不重启、不退款、不建工单。匿名授权返回 `login_required`；无效、过期授权或已失效 Session 返回 401。授权在 120 秒内可重复执行同一只读查询，不承诺一次性消费；聊天结束不会提前撤销授权。错误不能解释为没有部署。
 
-不需要为了单次迁移先引入平台注册表。如果确实需要通过配置长期保留多个后端，再在装配入口增加选择逻辑；这不是当前已有能力。
+每轮请求重新签发授权，通过 Dify `inputs.deployment_grant` 传入。工具 Authorization 固定绑定 `start.deployment_grant`（`auto: 0`），不由模型从历史中提取或填写。未知产品问题按提示词说明资料不足并提供支持邮箱；无关问题简短拒答。页面的控制台或登录、邮件入口始终保留。
 
-目标平台还需要满足以下条件，否则工作范围会超过简单字段转换：
+Dify 非成功响应的 `message` 同时包含 `Spend limit exceeded:` 与 `2045` 时，适配器映射为 `429 budget_exhausted`；其余 Dify HTTP 429 映射为 `429 rate_limited`，其他上游错误为 502。此预算识别依赖供应商错误文本，升级后需复验；网关限流若被 Dify 包装成其他 HTTP 状态，目前只会显示通用不可用。
 
-| 目标平台差异                   | 需要处理的内容                                                            |
-| ------------------------------ | ------------------------------------------------------------------------- |
-| 只接受完整历史消息，不管理会话 | 服务端需要存储并按访客读取历史；当前前端只发送本轮问题和会话 ID           |
-| 没有访客与会话归属校验         | 新增服务端归属校验，不能仅凭客户端传入的会话 ID 读取他人历史              |
-| 只提供流式响应                 | 在适配器聚合为最终回答，或另外改造本站 API 和前端；当前使用 blocking JSON |
-| 要求账号权限或执行业务操作     | 接入本站登录校验和资源授权；匿名 cookie 不提供账号权限                    |
-| 响应通常超过 45 秒             | 重新评估服务端、客户端和部署平台时限；只换适配器无法消除超时              |
+## 费用与数据
 
-## 会话、数据和超时
+独立 AI Gateway 配置每天 USD 3（86400 秒 fixed 窗口）、滚动一小时 USD 0.50，以及全网关每 60 秒 20 次模型请求。Dify Agent 最多三轮，每次输出最多 700 token，关闭思考模式，记忆窗口六轮。网关管理权限和调用权限使用不同 token，不启用绕过预算的 fallback。
 
-匿名访客 cookie 名为 `support_visitor`，内容为随机 UUID 加 HMAC-SHA256 签名。成功回复后才写入或续期，期限一天，路径为 `/api/support`，设置 HttpOnly 和 SameSite Strict，生产环境增加 Secure。签名防止客户端自行指定有效访客身份；它不证明用户已经登录。
+规则源文件为 `support/gateway/policy.json`，不含账户、网关 ID 或凭据。使用 `pnpm support:gateway --env <本地环境文件>` 检查差异，加 `--apply` 后通过 cf CLI 更新并回读确认；`--dry-run` 只验证请求构造，详见[同步说明](../../support/gateway/README.md)。创建 API 可能忽略预算字段，不能只验证创建成功。默认关闭请求日志收集，测试可短时开启仅用于合成内容，完成后恢复。调用端还须配置 `support/gateway/request-headers.json` 中的显式缓存跳过头；不能把 `cache_ttl: 0` 等同于已验证无缓存。供应商 key、网关认证与插件保存注意事项见 [Dify 接入说明](../../support/dify/README.md)。
 
-当前会话 ID 和聊天记录只保存在 React 内存中。关闭再打开窗口会保留当前组件中的对话；点击“新对话”清空消息和会话 ID，但不清除访客 cookie；刷新页面会开始新对话。Dify 端仍可能保留历史，需要在上游单独配置保留与删除策略，清空窗口不会删除上游数据。
+Cloudflare 在请求完成后记录费用，限制是最终一致的：并发及传播延迟可能造成短暂超额，不能当作严格余额扣减。费用是基于 token 的估算，不等于供应商账单；网关故障时不直连供应商。Agent 对话模型按当前配置经过独立网关，费用不扣客户 AI 余额；新加入的 embedding 和重排序是否经过该网关尚待复验。参见 [Spend Limits](https://developers.cloudflare.com/ai-gateway/features/spend-limits/)。
 
-路由将访客 ID 传给 Dify 的 `user` 字段，会话归属仍需由上游校验。本实现不访问账号、计费或部署数据库，也不执行退款或账号操作。更换服务时，需要重新检查产品资料与政策，不能让回答误导用户认为机器人已经完成业务操作。
+本站入口每 IP 每 60 秒最多接收 6 次合法聊天请求，从首次请求开始计时；IPv6 按 /64 合并，IPv4-mapped IPv6 与对应 IPv4 共用额度。数据库原子更新供所有实例共享；新会话、清除 cookie、登录或退出不会重置同 IP 计数。上游失败仍计次，超限返回 `429 rate_limited` 和 `Retry-After` 秒数。数据库或可信 IP 来源不可用时停止调用 Dify。表只保存 IP 的 HMAC 摘要、计数和窗口结束时间；后续请求分批清理过期超过一天的记录（每次最多 100 条），无流量时不会主动清理。固定窗口边界可能连续放行两批请求，共享出口用户也共用额度；全局网关限制继续生效。
 
-服务端传给适配器的超时为 45 秒，客户端等待上限为 50 秒，路由声明 `maxDuration = 60`。部署平台还需支持相应执行时长。组件卸载会取消客户端请求；仅关闭对话框不会主动取消进行中的请求。上游或适配器必须响应取消信号，取消也不保证上游不会计费。
+Vercel 部署读取平台覆盖的 `x-forwarded-for`，不回退到客户端可伪造的其它头。自托管生产环境必须设置 `SUPPORT_CHAT_TRUSTED_IP_HEADER`，并确保入口代理覆盖该头、源站不能被直接访问；不接受逗号分隔地址列表。本地开发未配置可信头时共用回环地址桶。若 Vercel 前面另有代理，必须复核取得的是用户 IP 还是代理 IP。参见 [Vercel 请求头说明](https://vercel.com/docs/headers/request-headers)。
 
-## 验证范围
+当前没有账号或匿名访客独立额度。账号限流应使用服务端 Session 的 `user.id`，在 IP 检查通过后再检查，不用浏览器参数、Session ID 或 Dify 出站 IP 代替账号。网站与 Dify 自身的非模型资源仍需平台边缘防刷保护；应用层计数不替代边缘防护。
 
-运行现有检查：
+2026-09-30 远端知识库已改为 high_quality，使用 SiliconFlow `BAAI/bge-m3` embedding，工作流启用 `BAAI/bge-reranker-v2-m3` 重排序；新增调用的网关路由与预算覆盖尚未复验。已重建知识库并绑定客服草稿，检索改用原始 `sys.query`，Agent query 已包含原始问题。中、英、日价格检索在有无重排序时均通过；尚未发布新绑定或完成完整聊天验收，详见 Dify 接入说明。前端清空聊天不会删除 Dify 记录。问题、回答、短期授权及工具结果可能存在 Dify 执行日志中，授权仅到期或 Session 失效后不可用。供应商会处理问题、检索资料和最小化工具结果。公开上线前必须审查隐私说明，以及 Dify、Cloudflare 和供应商的日志权限、保留与删除策略。
+
+网站上游超时 45 秒、客户端 50 秒、路由执行上限 60 秒。取消请求不保证已经开始的模型调用不计费。
+
+前后端均不自动重试。窗口发送期间禁用输入和发送；失败后把问题恢复到输入框，保留已显示的用户消息与旧会话 ID，由用户决定是否重发。409 会清空会话；普通错误和超时不会清空，上游仍可能完成并保存未展示的回答，因此手动重发可能造成重复消息。用户可以使用清空入口开始新会话。
+
+## 验证
 
 ```bash
-pnpm exec vitest run src/app/api/support/chat/route.test.ts
+pnpm exec vitest run src/lib/support src/app/api/support
 pnpm exec tsc --noEmit
-```
-
-通用端到端检查只调用本站客服接口，不读取模型平台配置或密钥。更换后端后继续使用：
-
-```bash
-pnpm exec tsx scripts/support/check.ts --url http://localhost:3000
+pnpm exec tsx scripts/support/check-dify.ts --env .env.support-test
 pnpm exec tsx scripts/support/check.ts --url http://localhost:3000 --chat
 ```
 
-默认检查来源和输入校验；`--chat` 额外检查首次问答、携带 cookie 续聊以及跨访客续聊。
-客服开关需要开启。若跨访客请求返回 502，只能说明请求未成功，不能据此认定权限隔离通过，
-需核对服务端日志，脚本以退出码 2 表示结果待确认；验证失败为 1，全部通过为 0。
-受保护的测试环境可用 `--headers-file <文件>` 加载访问认证请求头，
-文件格式为 JSON 字符串键值对象，保存在仓库外或被 Git 忽略的位置，不得提交密钥。
+Dify 专用脚本只检查连接、鉴权和必填字段，不直接发起聊天。通用脚本通过本站入口检查问答、续聊与跨访客拒绝；`--chat` 产生模型费用。受保护环境可传 `--headers-file` 读取被 Git 忽略的 JSON 请求头文件。
 
-Dify 专用检查用于诊断平台连接、应用认证和必填输入参数：
-
-```bash
-pnpm exec tsx scripts/support/check-dify.ts
-pnpm exec tsx scripts/support/check-dify.ts --chat
-```
-
-专用检查默认读取 `.env.local` 和 `.env`，也可用 `--env <文件>` 指定配置。
-更换平台时替换对应的专用检查即可。两个脚本的 `--chat` 都会产生模型调用，
-结果不输出密钥或聊天内容。
-
-通过反向隧道连接自建服务时，只转发所需 API 路径，其他路径返回 404。
-外部入口保留 Dify 应用密钥认证，不开放管理后台。隧道凭据和机器配置只保存在
-受限的部署环境中，不能提交到源码仓库。需要从网站实际运行环境再次验证连接，
-不能用本地网络测试替代云端验证。
-
-[`route.test.ts`](../../src/app/api/support/chat/route.test.ts) 使用 mock fetch，覆盖凭据不返回前端、推理清理、cookie 身份复用与伪造、跨域拦截、输入限制、错误映射、开关、本地限流以及根据配置生成 Dify URL 和转发会话字段。
-
-这些测试验证本站代码的契约，不证明目标 Dify 可访问，也不证明迁移后的会话数据兼容。测试名称中的“切换主机”用例检查配置 URL 和身份字段，不会实际迁移远端数据或连接两台服务器。
-
-实际切换还需要在目标环境验证：首次问答、连续对话、新对话、独立浏览器访客、旧会话 ID、网络故障、上游 429、超时，以及关闭开关后的首页与 API。更换平台时，应另外覆盖新适配器的协议、取消行为和会话归属检查。
+预算验收使用独立网关的极低临时额度，核对 429、供应商零 token/零费用和恢复后成功，并记录传播延迟；测试结束恢复正常预算。发布还需验证真实登录、无部署、有部署、越权、退出后旧授权失效、拒答和手机窗口。最新结果见[实施状态](support-agent-implementation.md)。
