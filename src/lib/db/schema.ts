@@ -67,6 +67,16 @@ export const verification = pgTable("verification", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const supportRateLimit = pgTable(
+  "support_rate_limit",
+  {
+    key: text("key").primaryKey(),
+    count: integer("count").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [index("support_rate_limit_expires_idx").on(table.expiresAt)],
+);
+
 export const subscription = pgTable("subscription", {
   id: text("id").primaryKey(),
   plan: text("plan").notNull(),
@@ -102,9 +112,9 @@ export const billingCustomerCache = pgTable(
   (table) => ({
     pk: primaryKey({ columns: [table.userId, table.stripeCustomerId] }),
     customerIdx: index("billing_customer_cache_customer_id_idx").on(
-      table.stripeCustomerId
+      table.stripeCustomerId,
     ),
-  })
+  }),
 );
 
 export const billingSubscription = pgTable(
@@ -129,9 +139,9 @@ export const billingSubscription = pgTable(
   (table) => ({
     userIdx: index("billing_subscription_user_id_idx").on(table.userId),
     customerIdx: index("billing_subscription_customer_id_idx").on(
-      table.stripeCustomerId
+      table.stripeCustomerId,
     ),
-  })
+  }),
 );
 
 export const billingSubscriptionItem = pgTable(
@@ -164,14 +174,14 @@ export const billingSubscriptionItem = pgTable(
   (table) => ({
     userIdx: index("billing_subscription_item_user_id_idx").on(table.userId),
     customerIdx: index("billing_subscription_item_customer_id_idx").on(
-      table.stripeCustomerId
+      table.stripeCustomerId,
     ),
     priceIdx: index("billing_subscription_item_price_id_idx").on(table.priceId),
     userArchivedIdx: index("billing_subscription_item_user_archived_idx").on(
       table.userId,
-      table.archivedAt
+      table.archivedAt,
     ),
-  })
+  }),
 );
 
 export const usageCreditBalance = pgTable(
@@ -192,7 +202,7 @@ export const usageCreditBalance = pgTable(
   },
   (table) => ({
     updatedIdx: index("usage_credit_balance_updated_idx").on(table.updatedAt),
-  })
+  }),
 );
 
 export const usageCreditGrant = pgTable(
@@ -220,13 +230,13 @@ export const usageCreditGrant = pgTable(
   (table) => ({
     userExpiresIdx: index("usage_credit_grant_user_expires_idx").on(
       table.userId,
-      table.expiresAt
+      table.expiresAt,
     ),
     sourceUnique: unique("usage_credit_grant_source_unique").on(
       table.sourceType,
-      table.sourceId
+      table.sourceId,
     ),
-  })
+  }),
 );
 
 export const usageCreditLedger = pgTable(
@@ -249,13 +259,13 @@ export const usageCreditLedger = pgTable(
   (table) => ({
     userCreatedIdx: index("usage_credit_ledger_user_created_idx").on(
       table.userId,
-      table.createdAt
+      table.createdAt,
     ),
     sourceUnique: unique("usage_credit_ledger_source_unique").on(
       table.sourceType,
-      table.sourceId
+      table.sourceId,
     ),
-  })
+  }),
 );
 
 export const telegramAccountLink = pgTable(
@@ -272,9 +282,9 @@ export const telegramAccountLink = pgTable(
   (table) => ({
     userIdx: index("telegram_account_link_user_id_idx").on(table.userId),
     telegramIdx: index("telegram_account_link_tg_user_id_idx").on(
-      table.telegramUserId
+      table.telegramUserId,
     ),
-  })
+  }),
 );
 
 export const installStatusEnum = pgEnum("install_status", [
@@ -412,7 +422,7 @@ export const adminCustomerNotes = pgTable(
   },
   (table) => ({
     updatedIdx: index("admin_customer_notes_updated_idx").on(table.updatedAt),
-  })
+  }),
 );
 
 export const deploymentAgentJobs = pgTable(
@@ -437,14 +447,14 @@ export const deploymentAgentJobs = pgTable(
   (table) => ({
     sidStatusIdx: index("deployment_agent_jobs_sid_status_idx").on(
       table.sid,
-      table.status
+      table.status,
     ),
     sidUpdatedIdx: index("deployment_agent_jobs_sid_updated_idx").on(
       table.sid,
-      table.updatedAt
+      table.updatedAt,
     ),
     userIdx: index("deployment_agent_jobs_user_idx").on(table.userId),
-  })
+  }),
 );
 
 export const deploymentAgents = pgTable(
@@ -469,13 +479,13 @@ export const deploymentAgents = pgTable(
     pk: primaryKey({ columns: [table.sid, table.agentId] }),
     sidActiveIdx: index("deployment_agents_sid_active_idx").on(
       table.sid,
-      table.active
+      table.active,
     ),
     sidUpdatedIdx: index("deployment_agents_sid_updated_idx").on(
       table.sid,
-      table.updatedAt
+      table.updatedAt,
     ),
-  })
+  }),
 );
 
 export const telegramBotTokenAssignments = pgTable(
@@ -494,26 +504,29 @@ export const telegramBotTokenAssignments = pgTable(
   },
   (table) => ({
     activeTokenUnique: uniqueIndex(
-      "telegram_bot_token_assignments_active_token_uniq"
+      "telegram_bot_token_assignments_active_token_uniq",
     )
       .on(table.tokenHash)
       .where(sql`${table.active} = true`),
     sidAgentIdx: index("telegram_bot_token_assignments_sid_agent_idx").on(
       table.sid,
       table.agentId,
-      table.active
+      table.active,
     ),
-  })
+  }),
 );
 
-export const deploymentAgentJobSecrets = pgTable("deployment_agent_job_secrets", {
-  jobId: text("job_id")
-    .primaryKey()
-    .references(() => deploymentAgentJobs.id, { onDelete: "cascade" }),
-  kind: text("kind").notNull(),
-  ciphertext: text("ciphertext").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+export const deploymentAgentJobSecrets = pgTable(
+  "deployment_agent_job_secrets",
+  {
+    jobId: text("job_id")
+      .primaryKey()
+      .references(() => deploymentAgentJobs.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    ciphertext: text("ciphertext").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+);
 
 export const deploymentAgentWake = pgTable(
   "deployment_agent_wake",
@@ -527,7 +540,7 @@ export const deploymentAgentWake = pgTable(
   },
   (table) => ({
     updatedIdx: index("deployment_agent_wake_updated_idx").on(table.updatedAt),
-  })
+  }),
 );
 
 export const deploymentBackups = pgTable(
@@ -550,10 +563,12 @@ export const deploymentBackups = pgTable(
   (table) => ({
     userCreatedIdx: index("deployment_backups_user_created_idx").on(
       table.userId,
-      table.createdAt
+      table.createdAt,
     ),
-    sourceSidIdx: index("deployment_backups_source_sid_idx").on(table.sourceSid),
-  })
+    sourceSidIdx: index("deployment_backups_source_sid_idx").on(
+      table.sourceSid,
+    ),
+  }),
 );
 
 export const deploymentBackupPasswords = pgTable(
@@ -572,9 +587,9 @@ export const deploymentBackupPasswords = pgTable(
     pk: primaryKey({ columns: [table.userId, table.seatKey] }),
     userUpdatedIdx: index("deployment_backup_passwords_user_updated_idx").on(
       table.userId,
-      table.updatedAt
+      table.updatedAt,
     ),
-  })
+  }),
 );
 
 export const deployPresetUsageDaily = pgTable(
@@ -591,7 +606,7 @@ export const deployPresetUsageDaily = pgTable(
   },
   (table) => ({
     uniqueSubscriptionDay: unique().on(table.subscriptionItemId, table.day),
-  })
+  }),
 );
 
 export const deployPresetUsageSeatDaily = pgTable(
@@ -630,9 +645,9 @@ export const deployPresetUsageSeatDaily = pgTable(
     uniqueSidDay: unique().on(table.sid, table.day),
     uniqueSeatDay: unique("deploy_preset_usage_seat_daily_seat_day_uniq").on(
       table.seatId,
-      table.day
+      table.day,
     ),
-  })
+  }),
 );
 
 export const deployPresetModels = pgTable(
@@ -653,9 +668,9 @@ export const deployPresetModels = pgTable(
     activeSortIdx: index("deploy_preset_models_active_sort_idx").on(
       table.isActive,
       table.sortOrder,
-      table.createdAt
+      table.createdAt,
     ),
-  })
+  }),
 );
 
 export const deployPresetPricingRules = pgTable(
@@ -676,22 +691,20 @@ export const deployPresetPricingRules = pgTable(
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => ({
-    activePlanTimeIdx: index("deploy_preset_pricing_rules_active_plan_time_idx").on(
-      table.isActive,
-      table.seatPlan,
-      table.effectiveFrom
-    ),
+    activePlanTimeIdx: index(
+      "deploy_preset_pricing_rules_active_plan_time_idx",
+    ).on(table.isActive, table.seatPlan, table.effectiveFrom),
     modelRuleUniq: unique("deploy_preset_pricing_rules_model_rule_uniq").on(
       table.seatPlan,
       table.modelId,
-      table.effectiveFrom
+      table.effectiveFrom,
     ),
     tierRuleUniq: unique("deploy_preset_pricing_rules_tier_rule_uniq").on(
       table.seatPlan,
       table.tier,
-      table.effectiveFrom
+      table.effectiveFrom,
     ),
-  })
+  }),
 );
 
 export const contentVideos = pgTable(
@@ -711,9 +724,9 @@ export const contentVideos = pgTable(
       table.surface,
       table.isActive,
       table.sortOrder,
-      table.createdAt
+      table.createdAt,
     ),
-  })
+  }),
 );
 
 // ==========================================
@@ -722,20 +735,20 @@ export const contentVideos = pgTable(
 
 // Feature Request status enum
 export const featureStatusEnum = pgEnum("feature_status", [
-  "considering",  // Under consideration
-  "planned",      // Planned for development
-  "in-progress",  // Currently in development
-  "completed",    // Released
-  "rejected",     // Not planned
+  "considering", // Under consideration
+  "planned", // Planned for development
+  "in-progress", // Currently in development
+  "completed", // Released
+  "rejected", // Not planned
 ]);
 
 // Feature Request category enum
 export const featureCategoryEnum = pgEnum("feature_category", [
-  "core",         // Core features
-  "integration",  // Integrations
-  "ui",           // User interface
-  "billing",      // Billing & payments
-  "other",        // Other
+  "core", // Core features
+  "integration", // Integrations
+  "ui", // User interface
+  "billing", // Billing & payments
+  "other", // Other
 ]);
 
 // Feature Request table
@@ -745,7 +758,9 @@ export const featureRequest = pgTable("feature_request", {
   description: text("description"),
   status: featureStatusEnum("status").default("considering").notNull(),
   category: featureCategoryEnum("category").default("other").notNull(),
-  submittedBy: text("submitted_by").references(() => user.id, { onDelete: "set null" }),
+  submittedBy: text("submitted_by").references(() => user.id, {
+    onDelete: "set null",
+  }),
   isPaidUser: boolean("is_paid_user").default(false).notNull(),
   releaseDate: timestamp("release_date"),
   releaseNote: text("release_note"),
@@ -756,21 +771,29 @@ export const featureRequest = pgTable("feature_request", {
 
 // Vote intensity enum
 export const voteIntensityEnum = pgEnum("vote_intensity", [
-  "want",    // Want it (weight: 1)
-  "need",    // Need it urgently (weight: 2)
+  "want", // Want it (weight: 1)
+  "need", // Need it urgently (weight: 2)
 ]);
 
 // Feature Vote table
-export const featureVote = pgTable("feature_vote", {
-  id: text("id").primaryKey(),
-  featureId: text("feature_id").notNull().references(() => featureRequest.id, { onDelete: "cascade" }),
-  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
-  intensity: voteIntensityEnum("intensity").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-}, (table) => ({
-  // Each user can only vote once per feature
-  uniqueUserFeature: unique().on(table.featureId, table.userId),
-}));
+export const featureVote = pgTable(
+  "feature_vote",
+  {
+    id: text("id").primaryKey(),
+    featureId: text("feature_id")
+      .notNull()
+      .references(() => featureRequest.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    intensity: voteIntensityEnum("intensity").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    // Each user can only vote once per feature
+    uniqueUserFeature: unique().on(table.featureId, table.userId),
+  }),
+);
 
 export type FeatureRequest = typeof featureRequest.$inferSelect;
 export type FeatureVote = typeof featureVote.$inferSelect;

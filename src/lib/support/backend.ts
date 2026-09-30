@@ -2,6 +2,7 @@ export type SupportChatRequest = {
   query: string;
   conversationId?: string;
   visitorId: string;
+  toolGrant: string;
   signal: AbortSignal;
 };
 
@@ -15,7 +16,10 @@ export interface SupportBackend {
 }
 
 export class SupportBackendError extends Error {
-  constructor(public readonly status: 429 | 502 | 504) {
+  constructor(
+    public readonly status: 429 | 502 | 504,
+    public readonly code?: "budget_exhausted",
+  ) {
     super("Support backend unavailable");
   }
 }

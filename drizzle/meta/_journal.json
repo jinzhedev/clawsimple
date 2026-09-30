@@ -470,6 +470,13 @@
       "when": 1781960476459,
       "tag": "0066_hard_jubilee",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1790737306445,
+      "tag": "0067_support_ip_rate_limit",
+      "breakpoints": true
     }
   ]
 }

@@ -113,7 +113,7 @@ async function main() {
     conversationId: first.data.conversationId,
   });
   if (
-    [401, 403, 404].includes(isolated.response.status) &&
+    [401, 403, 404, 409].includes(isolated.response.status) &&
     !isolated.data.answer
   ) {
     console.log("跨访客续聊: 已拒绝");

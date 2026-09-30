@@ -1,7 +1,5 @@
-import { randomUUID } from "node:crypto";
 import { parseArgs } from "node:util";
 import { config } from "dotenv";
-import { createDifyBackend } from "../../src/lib/support/dify-backend";
 
 class CheckError extends Error {}
 
@@ -14,6 +12,10 @@ const { values } = parseArgs({
 config({ path: values.env ?? [".env.local", ".env"], quiet: true });
 
 async function main() {
+  if (values.chat)
+    throw new CheckError(
+      "聊天验证请使用 check.ts --url <网站地址> --chat，确保经过网站身份校验",
+    );
   const base = process.env.DIFY_API_URL?.trim().replace(/\/$/, "");
   const key = process.env.DIFY_API_KEY?.trim();
   if (!base || !key) throw new CheckError("缺少 DIFY_API_URL 或 DIFY_API_KEY");
@@ -36,12 +38,25 @@ async function main() {
     if (!body || typeof body !== "object")
       throw new CheckError(`${path}: 无效 JSON`);
     if (path === "/parameters") {
-      const required = (body.user_input_form ?? []).some(
-        (item: Record<string, { required?: boolean }>) =>
-          Object.values(item).some((field) => field?.required),
+      const fields = (body.user_input_form ?? []).flatMap(
+        (item: Record<string, { required?: boolean; variable?: string }>) =>
+          Object.values(item),
       );
-      if (required)
-        throw new CheckError("应用包含必填 inputs，当前适配器无法调用");
+      const expected = ["deployment_grant"];
+      if (
+        expected.some(
+          (name) =>
+            !fields.some(
+              (field: { variable?: string; required?: boolean }) =>
+                field.variable === name && field.required,
+            ),
+        ) ||
+        fields.some(
+          (field: { variable?: string; required?: boolean }) =>
+            field.required && !expected.includes(field.variable ?? ""),
+        )
+      )
+        throw new CheckError("应用 inputs 不符合客服 Agent 契约");
     }
     console.log(`${path}: 认证与连接通过`);
   }
@@ -53,24 +68,6 @@ async function main() {
     throw new CheckError(`无凭据访问未被拒绝: HTTP ${denied.status}`);
   }
   console.log("无凭据访问: 已拒绝");
-  if (!values.chat) return;
-  const backend = createDifyBackend(base, key);
-  const visitorId = `support-check-${randomUUID()}`;
-  const first = await backend.chat({
-    query: "你好，请用一句话说明你能提供什么客服帮助。",
-    visitorId,
-    signal: AbortSignal.timeout(45_000),
-  });
-  const second = await backend.chat({
-    query: "谢谢，请用一句话告诉我下一步。",
-    visitorId,
-    conversationId: first.conversationId,
-    signal: AbortSignal.timeout(45_000),
-  });
-  if (second.conversationId !== first.conversationId) {
-    throw new CheckError("续聊返回了不同的会话 ID");
-  }
-  console.log("首次问答与续聊: 通过（已产生模型调用）");
 }
 
 main().catch((error) => {

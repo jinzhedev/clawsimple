@@ -5,6 +5,14 @@ import { NextRequest } from "next/server";
 import { POST } from "./route";
 import { stripThinkBlocks } from "@/lib/support/strip-reasoning";
 const upstream = vi.fn();
+const mocks = vi.hoisted(() => ({
+  session: vi.fn(),
+  ipLimit: vi.fn(),
+}));
+vi.mock("@/lib/auth/session", () => ({ getRequestSession: mocks.session }));
+vi.mock("@/lib/support/rate-limit", () => ({
+  checkSupportIpLimit: mocks.ipLimit,
+}));
 function request(
   body: unknown,
   cookie?: string,
@@ -22,10 +30,28 @@ function request(
 }
 beforeEach(() => {
   vi.stubEnv("SUPPORT_CHAT_PUBLIC_ENABLED", "true");
+  vi.stubEnv("SUPPORT_CHAT_MAX_QUERY_LENGTH", "");
+  vi.stubEnv("SUPPORT_CHAT_MAX_BODY_BYTES", "");
   vi.stubEnv("DIFY_API_URL", "http://dify.test/v1");
   vi.stubEnv("DIFY_API_KEY", "private-key");
-  vi.stubEnv("SUPPORT_CHAT_SESSION_SECRET", "test-secret");
-  vi.stubGlobal("fetch", upstream);
+  vi.stubEnv("SUPPORT_CHAT_SESSION_SECRET", "test-secret".repeat(4));
+  mocks.session.mockReset().mockResolvedValue(null);
+  mocks.ipLimit
+    .mockReset()
+    .mockResolvedValue({ allowed: true, retryAfter: 60 });
+  vi.stubGlobal("fetch", (url: string, init: RequestInit) =>
+    url.endsWith("/parameters")
+      ? Promise.resolve(
+          Response.json({
+            user_input_form: [
+              {
+                "text-input": { variable: "deployment_grant", required: true },
+              },
+            ],
+          }),
+        )
+      : upstream(url, init),
+  );
   upstream.mockReset();
   upstream.mockImplementation(() =>
     Response.json({
@@ -39,12 +65,41 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe("Dify support boundary", () => {
+  it("applies configured query and UTF-8 body limits independently", async () => {
+    vi.stubEnv("SUPPORT_CHAT_MAX_QUERY_LENGTH", "3000");
+    vi.stubEnv("SUPPORT_CHAT_MAX_BODY_BYTES", "16384");
+    expect((await POST(request({ query: "中".repeat(3000) }))).status).toBe(
+      200,
+    );
+    expect((await POST(request({ query: "a".repeat(3001) }))).status).toBe(400);
+    vi.stubEnv("SUPPORT_CHAT_MAX_BODY_BYTES", "100");
+    expect((await POST(request({ query: "中".repeat(40) }))).status).toBe(413);
+    vi.stubEnv("SUPPORT_CHAT_MAX_QUERY_LENGTH", "2");
+    expect((await POST(request({ query: "😀" }))).status).toBe(200);
+    expect((await POST(request({ query: "😀a" }))).status).toBe(400);
+  });
+  it("rejects an exhausted IP before session lookup and paid calls", async () => {
+    mocks.ipLimit.mockResolvedValue({ allowed: false, retryAfter: 42 });
+    const response = await POST(request({ query: "Hello" }));
+    expect(response.status).toBe(429);
+    expect(response.headers.get("Retry-After")).toBe("42");
+    expect(await response.json()).toEqual({ error: "rate_limited" });
+    expect(mocks.session).not.toHaveBeenCalled();
+    expect(upstream).not.toHaveBeenCalled();
+  });
+  it("fails closed if the shared limiter is unavailable", async () => {
+    mocks.ipLimit.mockRejectedValue(new Error("private database detail"));
+    const response = await POST(request({ query: "Hello" }));
+    expect(response.status).toBe(502);
+    expect(await response.json()).toEqual({ error: "unavailable" });
+    expect(upstream).not.toHaveBeenCalled();
+  });
   it("keeps credentials and reasoning server-side and signs the visitor cookie", async () => {
     const response = await POST(request({ query: "Hello" }));
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       answer: "Hello",
-      conversationId: "12345678-1234-1234-1234-123456789abc",
+      conversationId: expect.any(String),
     });
     expect(response.headers.get("set-cookie")).toContain("HttpOnly");
     expect(response.headers.get("cache-control")).toBe("no-store");
@@ -112,18 +167,16 @@ describe("Dify support boundary", () => {
     const first = await POST(request({ query: "Hello" }));
     const cookie = first.headers.get("set-cookie")!.split(";")[0];
     expect(first.headers.get("set-cookie")).toContain("Path=/api/support;");
-    await POST(
-      request(
-        { query: " Continue ", conversationId: "opaque-conversation_123" },
-        cookie,
-      ),
-    );
+    const { conversationId } = await first.json();
+    await POST(request({ query: " Continue ", conversationId }, cookie));
     expect(upstream.mock.calls[1][0]).toBe(
       "https://cloud.example.test/v1/chat-messages",
     );
     const payload = JSON.parse(upstream.mock.calls[1][1].body);
     expect(payload.query).toBe("Continue");
-    expect(payload.conversation_id).toBe("opaque-conversation_123");
+    expect(payload.conversation_id).toBe(
+      "12345678-1234-1234-1234-123456789abc",
+    );
     expect(payload.user).toBe(JSON.parse(upstream.mock.calls[0][1].body).user);
     expect(upstream.mock.calls[1][1].signal).toBeInstanceOf(AbortSignal);
   });
@@ -137,16 +190,56 @@ describe("Dify support boundary", () => {
     upstream.mockResolvedValueOnce(Response.json(null));
     expect((await POST(request({ query: "Hello" }))).status).toBe(502);
   });
-  it("enforces the visitor limit before calling the backend", async () => {
+  it("rejects a different visitor, login, logout, or account switch before a paid call", async () => {
     const first = await POST(request({ query: "Hello" }));
     const cookie = first.headers.get("set-cookie")!.split(";")[0];
-    for (let i = 0; i < 9; i++) {
-      expect((await POST(request({ query: "Again" }, cookie))).status).toBe(
-        200,
-      );
-    }
-    expect((await POST(request({ query: "Again" }, cookie))).status).toBe(429);
-    expect(upstream).toHaveBeenCalledTimes(10);
+    const { conversationId } = await first.json();
+    expect(
+      (await POST(request({ query: "Again", conversationId }))).status,
+    ).toBe(409);
+    mocks.session.mockResolvedValue({
+      user: { id: "a" },
+      session: { id: "session-a" },
+    });
+    expect(
+      (await POST(request({ query: "Again", conversationId }, cookie))).status,
+    ).toBe(409);
+    const loggedIn = await POST(request({ query: "Mine" }, cookie));
+    const signed = (await loggedIn.json()).conversationId;
+    mocks.session.mockResolvedValue({
+      user: { id: "b" },
+      session: { id: "session-b" },
+    });
+    expect(
+      (await POST(request({ query: "Again", conversationId: signed }, cookie)))
+        .status,
+    ).toBe(409);
+    mocks.session.mockResolvedValue(null);
+    expect(
+      (await POST(request({ query: "Again", conversationId: signed }, cookie)))
+        .status,
+    ).toBe(409);
+    expect(upstream).toHaveBeenCalledTimes(2);
+  });
+  it("fails closed when session lookup is unavailable", async () => {
+    mocks.session.mockRejectedValueOnce(new Error("database secret"));
+    expect((await POST(request({ query: "Hello" }))).status).toBe(502);
+    expect(upstream).not.toHaveBeenCalled();
+  });
+  it("normalizes the gateway budget error wrapped by Dify", async () => {
+    upstream.mockResolvedValueOnce(
+      Response.json(
+        {
+          message:
+            'Provider error: {"code":2045,"message":"Spend limit exceeded: rule daily"}',
+        },
+        { status: 400 },
+      ),
+    );
+    const response = await POST(request({ query: "Hello" }));
+    expect(response.status).toBe(429);
+    expect(await response.json()).toEqual({ error: "budget_exhausted" });
+    expect(upstream).toHaveBeenCalledTimes(1);
   });
   it("removes incomplete and multiple reasoning blocks", () => {
     expect(stripThinkBlocks("<think>hidden")).toBe("");
