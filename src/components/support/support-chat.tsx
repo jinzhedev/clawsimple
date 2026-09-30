@@ -1,74 +1,23 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MessageCircle, Send } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import { MessageCircle, Send, X } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Root as Dialog,
+  Content as DialogContent,
+  Description as DialogDescription,
+  Title as DialogTitle,
+  Trigger as DialogTrigger,
+  Portal as DialogPortal,
+  Close as DialogClose,
+} from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
+import { AUTH_HINT_CHANGED_EVENT } from "@/lib/auth/hint";
 
-const copy = {
-  en: {
-    title: "ClawSimple Support",
-    label: "AI assistant",
-    intro: "Questions about setup, plans, or your bot?",
-    placeholder: "Your question",
-    send: "Send",
-    waiting: "Preparing an answer…",
-    error: "Chat is unavailable. Please try again or email support.",
-    email: "Email support",
-    reset: "New conversation",
-    notice: "AI answers may be inaccurate. Never share passwords or API keys.",
-    limited: "Too many messages. Please wait a minute.",
-  },
-  "zh-Hans": {
-    title: "ClawSimple 客服",
-    label: "AI 助手",
-    intro: "可以咨询部署、套餐和机器人使用问题。",
-    placeholder: "请输入问题",
-    send: "发送",
-    waiting: "正在回答…",
-    error: "客服暂时无法回答，请稍后重试或发邮件联系。",
-    email: "邮件联系",
-    reset: "新对话",
-    notice: "AI 回答可能有误，请勿发送密码或 API 密钥。",
-    limited: "消息过于频繁，请稍等一分钟。",
-  },
-  "zh-Hant": {
-    title: "ClawSimple 客服",
-    label: "AI 助手",
-    intro: "可以詢問部署、方案和機器人使用問題。",
-    placeholder: "請輸入問題",
-    send: "傳送",
-    waiting: "正在回答…",
-    error: "客服暫時無法回答，請稍後重試或以郵件聯絡。",
-    email: "郵件聯絡",
-    reset: "新對話",
-    notice: "AI 回答可能有誤，請勿傳送密碼或 API 金鑰。",
-    limited: "訊息過於頻繁，請稍等一分鐘。",
-  },
-  ja: {
-    title: "ClawSimple サポート",
-    label: "AI アシスタント",
-    intro: "設定、プラン、ボットについて質問できます。",
-    placeholder: "質問を入力",
-    send: "送信",
-    waiting: "回答を作成中…",
-    error:
-      "現在回答できません。再度お試しいただくか、メールでお問い合わせください。",
-    email: "メールで問い合わせ",
-    reset: "新しい会話",
-    notice:
-      "AI の回答には誤りが含まれる場合があります。パスワードや API キーを送信しないでください。",
-    limited: "メッセージが多すぎます。1 分ほどお待ちください。",
-  },
-};
-export function SupportChat({ locale }: { locale: string }) {
-  const t = copy[locale as keyof typeof copy] ?? copy.en;
+export function SupportChat({ maxQueryLength }: { maxQueryLength: number }) {
+  const locale = useLocale();
+  const t = useTranslations("support");
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [messages, setMessages] = useState<
@@ -78,20 +27,78 @@ export function SupportChat({ locale }: { locale: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const controller = useRef<AbortController | null>(null);
+  const identity = useRef<string | undefined>(undefined);
+  const generation = useRef(0);
+  const [signedIn, setSignedIn] = useState(false);
   const bottom = useRef<HTMLDivElement>(null);
   useEffect(() => () => controller.current?.abort(), []);
   useEffect(() => {
+    if (!open) return;
+    let active = true;
+    let checking = false;
+    const reset = () => {
+      generation.current++;
+      controller.current?.abort();
+      setMessages([]);
+      setConversationId(undefined);
+      setQuery("");
+      setBusy(false);
+    };
+    const check = async () => {
+      if (checking) return;
+      checking = true;
+      try {
+        const response = await fetch("/api/support/session", {
+          cache: "no-store",
+        });
+        if (!response.ok) throw new Error();
+        const data = await response.json();
+        if (!active) return;
+        if (
+          identity.current !== undefined &&
+          identity.current !== data.identity
+        )
+          reset();
+        identity.current = data.identity;
+        setSignedIn(data.signedIn === true);
+      } catch {
+        if (active) {
+          reset();
+          setSignedIn(false);
+        }
+      } finally {
+        checking = false;
+      }
+    };
+    const changed = () => {
+      reset();
+      void check();
+    };
+    void check();
+    const interval = window.setInterval(check, 15_000);
+    window.addEventListener("focus", check);
+    window.addEventListener("storage", changed);
+    window.addEventListener(AUTH_HINT_CHANGED_EVENT, changed);
+    return () => {
+      active = false;
+      clearInterval(interval);
+      window.removeEventListener("focus", check);
+      window.removeEventListener("storage", changed);
+      window.removeEventListener(AUTH_HINT_CHANGED_EVENT, changed);
+    };
+  }, [open]);
+  useEffect(() => {
     bottom.current?.scrollIntoView?.({ block: "nearest" });
   }, [messages, busy, open]);
-  async function send(event: React.FormEvent) {
-    event.preventDefault();
-    const text = query.trim();
+  async function sendText(value: string) {
+    const text = value.trim();
     if (!text || busy) return;
     setBusy(true);
     setError("");
     setQuery("");
     setMessages((prev) => [...prev, { role: "user", text }]);
     controller.current = new AbortController();
+    const current = generation.current;
     try {
       const response = await fetch("/api/support/chat", {
         method: "POST",
@@ -102,108 +109,168 @@ export function SupportChat({ locale }: { locale: string }) {
           AbortSignal.timeout(50_000),
         ]),
       });
-      if (!response.ok)
-        throw new Error(response.status === 429 ? t.limited : t.error);
+      if (generation.current !== current) return;
+      if (response.status === 409) {
+        setMessages([]);
+        setConversationId(undefined);
+        throw new Error(t("expired"));
+      }
+      if (!response.ok) {
+        const failure = await response.json().catch(() => ({}));
+        throw new Error(
+          response.status === 429
+            ? t(failure.error === "budget_exhausted" ? "budget" : "limited")
+            : t("error"),
+        );
+      }
       const data = await response.json();
+      if (generation.current !== current) return;
       if (
         typeof data.answer !== "string" ||
         typeof data.conversationId !== "string"
       )
-        throw new Error(t.error);
+        throw new Error(t("error"));
       setConversationId(data.conversationId);
       setMessages((prev) => [
         ...prev,
         { role: "assistant", text: data.answer },
       ]);
     } catch (e) {
+      if (generation.current !== current) return;
       setError(
-        e instanceof Error && e.message === t.limited ? t.limited : t.error,
+        e instanceof Error &&
+          [t("limited"), t("budget"), t("expired")].includes(e.message)
+          ? e.message
+          : t("error"),
       );
       setQuery(text);
     } finally {
-      setBusy(false);
+      if (generation.current === current) setBusy(false);
     }
   }
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={setOpen} modal={false}>
       <DialogTrigger asChild>
-        <Button className="fixed bottom-5 right-5 z-40 rounded-full shadow-lg">
+        <Button className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-5 z-40 rounded-full shadow-lg">
           <MessageCircle className="mr-2 h-5 w-5" />
-          {t.title}
+          {t("title")}
         </Button>
       </DialogTrigger>
-      <DialogContent className="flex h-[min(38rem,85dvh)] w-[calc(100%-2rem)] flex-col gap-3 rounded-xl p-5 sm:max-w-md">
-        <div>
-          <DialogTitle>{t.title}</DialogTitle>
-          <DialogDescription className="mt-1">{t.label}</DialogDescription>
-        </div>
-        <div
-          role="log"
-          aria-live="polite"
-          aria-label={t.title}
-          className="min-h-0 flex-1 space-y-3 overflow-y-auto py-2"
+      <DialogPortal>
+        <DialogContent
+          onInteractOutside={(event) => event.preventDefault()}
+          className="fixed bottom-[calc(max(1.25rem,env(safe-area-inset-bottom))+3.5rem)] right-4 z-40 flex h-[min(38rem,calc(100dvh-7rem-env(safe-area-inset-bottom)))] w-[calc(100vw-2rem)] flex-col gap-3 rounded-2xl border bg-background p-4 shadow-2xl outline-none sm:right-5 sm:w-96 sm:p-5"
         >
-          {!messages.length && (
-            <p className="text-sm text-muted-foreground">{t.intro}</p>
+          <div className="flex shrink-0 items-start justify-between gap-3 border-b pb-3">
+            <div>
+              <DialogTitle className="text-lg font-semibold">
+                {t("title")}
+              </DialogTitle>
+              <DialogDescription className="mt-1 text-sm text-muted-foreground">
+                {t("label")}
+              </DialogDescription>
+            </div>
+            <DialogClose asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="shrink-0"
+                aria-label={t("close")}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogClose>
+          </div>
+          <div
+            role="log"
+            aria-live="polite"
+            aria-label={t("title")}
+            className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain py-2"
+          >
+            {!messages.length && (
+              <p className="text-sm text-muted-foreground">{t("intro")}</p>
+            )}
+            {messages.map((message, i) => (
+              <p
+                key={i}
+                className={`whitespace-pre-wrap break-words rounded-lg p-3 text-sm ${message.role === "user" ? "ml-8 bg-primary text-primary-foreground" : "mr-4 bg-muted"}`}
+              >
+                {message.text}
+              </p>
+            ))}
+            {busy && (
+              <p role="status" className="text-sm text-muted-foreground">
+                {t("waiting")}
+              </p>
+            )}
+            <div ref={bottom} />
+          </div>
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
           )}
-          {messages.map((message, i) => (
-            <p
-              key={i}
-              className={`whitespace-pre-wrap break-words rounded-lg p-3 text-sm ${message.role === "user" ? "ml-8 bg-primary text-primary-foreground" : "mr-4 bg-muted"}`}
+          <div className="flex flex-wrap gap-3 text-xs">
+            <button
+              type="button"
+              className="underline"
+              disabled={busy}
+              onClick={() => void sendText(t("deployments"))}
             >
-              {message.text}
-            </p>
-          ))}
-          {busy && (
-            <p role="status" className="text-sm text-muted-foreground">
-              {t.waiting}
-            </p>
-          )}
-          <div ref={bottom} />
-        </div>
-        {error && (
-          <p role="alert" className="text-sm text-destructive">
-            {error}
-          </p>
-        )}
-        <form onSubmit={send} className="flex gap-2">
-          <input
-            aria-label={t.placeholder}
-            placeholder={t.placeholder}
-            value={query}
-            maxLength={2000}
-            onChange={(event) => setQuery(event.target.value)}
-            disabled={busy}
-            className="min-w-0 flex-1 rounded-md border bg-background px-3 py-2 text-base"
-          />
-          <Button
-            type="submit"
-            disabled={busy || !query.trim()}
-            aria-label={t.send}
-          >
-            <Send className="h-4 w-4" />
-          </Button>
-        </form>
-        <div className="flex justify-between text-xs">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => {
-              setMessages([]);
-              setConversationId(undefined);
-              setError("");
-              setQuery("");
+              {t("deployments")}
+            </button>
+            <a
+              className="underline"
+              href={`/${locale}/${signedIn ? "profile" : "signin"}`}
+            >
+              {signedIn ? t("dashboard") : t("login")}
+            </a>
+          </div>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void sendText(query);
             }}
-            className="underline disabled:opacity-50"
+            className="flex gap-2"
           >
-            {t.reset}
-          </button>
-          <a className="underline" href="mailto:support@clawsimple.com">
-            {t.email}
-          </a>
-        </div>
-        <p className="text-xs text-muted-foreground">{t.notice}</p>
-      </DialogContent>
+            <input
+              aria-label={t("placeholder")}
+              placeholder={t("placeholder")}
+              value={query}
+              maxLength={maxQueryLength}
+              onChange={(event) => setQuery(event.target.value)}
+              disabled={busy}
+              className="min-w-0 flex-1 rounded-md border bg-background px-3 py-2 text-base"
+            />
+            <Button
+              type="submit"
+              disabled={busy || !query.trim()}
+              aria-label={t("send")}
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </form>
+          <div className="flex justify-between text-xs">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setMessages([]);
+                setConversationId(undefined);
+                setError("");
+                setQuery("");
+              }}
+              className="underline disabled:opacity-50"
+            >
+              {t("reset")}
+            </button>
+            <a className="underline" href="mailto:support@clawsimple.com">
+              {t("email")}
+            </a>
+          </div>
+          <p className="text-xs text-muted-foreground">{t("notice")}</p>
+        </DialogContent>
+      </DialogPortal>
     </Dialog>
   );
 }

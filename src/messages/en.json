@@ -866,5 +866,24 @@
     "post": {
       "backToList": "Back to blog"
     }
+  },
+  "support": {
+    "close": "Close chat",
+    "title": "ClawSimple Support",
+    "label": "AI assistant",
+    "intro": "Questions about setup, plans, or your bot?",
+    "placeholder": "Your question",
+    "send": "Send",
+    "waiting": "Preparing an answer…",
+    "error": "Chat is unavailable. Please try again or email support.",
+    "email": "Email support",
+    "reset": "New conversation",
+    "notice": "AI answers may be inaccurate. Never share passwords or API keys.",
+    "limited": "The message limit has been reached. Please try later or email support.",
+    "budget": "AI support has temporarily reached its usage limit. You can still visit your dashboard or email support.",
+    "deployments": "My deployments",
+    "login": "Sign in",
+    "dashboard": "Dashboard",
+    "expired": "Your session changed. Please start a new conversation."
   }
 }

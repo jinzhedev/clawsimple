@@ -867,5 +867,24 @@
     "post": {
       "backToList": "返回部落格"
     }
+  },
+  "support": {
+    "close": "收起聊天",
+    "title": "ClawSimple 客服",
+    "label": "AI 助手",
+    "intro": "可以詢問部署、方案和機器人使用問題。",
+    "placeholder": "請輸入問題",
+    "send": "傳送",
+    "waiting": "正在回答…",
+    "error": "客服暫時無法回答，請稍後重試或以郵件聯絡。",
+    "email": "郵件聯絡",
+    "reset": "新對話",
+    "notice": "AI 回答可能有誤，請勿傳送密碼或 API 金鑰。",
+    "limited": "已達目前訊息額度，請稍後再試，或透過郵件聯絡我們。",
+    "budget": "AI 客服暫時達到使用額度。您仍可查看控制台，或透過郵件聯絡我們。",
+    "deployments": "查詢我的部署",
+    "login": "登入",
+    "dashboard": "控制台",
+    "expired": "登入狀態已變更，請重新開始對話。"
   }
 }
