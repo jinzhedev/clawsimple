@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import Image from 'next/image';
-import Link from 'next/link';
-import { useTranslations, useLocale } from 'next-intl';
-import { Separator } from '@/components/ui/separator';
-import { siteConfig } from '@/config/site';
-import { DiscordLink } from './discord-link';
+import Image from "next/image";
+import Link from "next/link";
+import { useTranslations, useLocale } from "next-intl";
+import { Separator } from "@/components/ui/separator";
+import { siteConfig } from "@/config/site";
+import { DiscordLink } from "./discord-link";
 
 export function Footer() {
   const t = useTranslations();
@@ -29,13 +29,13 @@ export function Footer() {
               </span>
             </Link>
             <p className="mt-4 max-w-xs text-sm text-[#5c534c] dark:text-zinc-400">
-              {t('footer.tagline')}
+              {t("footer.tagline")}
             </p>
           </div>
 
           <div>
             <h3 className="mb-4 text-sm font-semibold text-[#171512] dark:text-zinc-50">
-              {t('footer.product')}
+              {t("footer.product")}
             </h3>
             <ul className="space-y-2 text-sm">
               <li>
@@ -43,7 +43,7 @@ export function Footer() {
                   href={`/${locale}#overview`}
                   className="text-[#5c534c] transition-colors hover:text-[#171512] dark:text-zinc-400 dark:hover:text-zinc-50"
                 >
-                  {t('common.overview')}
+                  {t("common.overview")}
                 </Link>
               </li>
               <li>
@@ -51,7 +51,7 @@ export function Footer() {
                   href={`/${locale}#pricing`}
                   className="text-[#5c534c] transition-colors hover:text-[#171512] dark:text-zinc-400 dark:hover:text-zinc-50"
                 >
-                  {t('common.pricing')}
+                  {t("common.pricing")}
                 </Link>
               </li>
               <li>
@@ -59,7 +59,7 @@ export function Footer() {
                   href={`/${locale}/roadmap`}
                   className="text-[#5c534c] transition-colors hover:text-[#171512] dark:text-zinc-400 dark:hover:text-zinc-50"
                 >
-                  {t('common.roadmap')}
+                  {t("common.roadmap")}
                 </Link>
               </li>
               <li>
@@ -67,7 +67,7 @@ export function Footer() {
                   href={`/${locale}/blog`}
                   className="text-[#5c534c] transition-colors hover:text-[#171512] dark:text-zinc-400 dark:hover:text-zinc-50"
                 >
-                  {t('common.blog')}
+                  {t("common.blog")}
                 </Link>
               </li>
             </ul>
@@ -75,7 +75,7 @@ export function Footer() {
 
           <div>
             <h3 className="mb-4 text-sm font-semibold text-[#171512] dark:text-zinc-50">
-              {t('footer.company')}
+              {t("footer.company")}
             </h3>
             <ul className="space-y-2 text-sm">
               <li>
@@ -83,7 +83,7 @@ export function Footer() {
                   href={`/${locale}/about`}
                   className="text-[#5c534c] transition-colors hover:text-[#171512] dark:text-zinc-400 dark:hover:text-zinc-50"
                 >
-                  {t('footer.about')}
+                  {t("footer.about")}
                 </Link>
               </li>
               <li>
@@ -91,7 +91,7 @@ export function Footer() {
                   href={`/${locale}/privacy`}
                   className="text-[#5c534c] transition-colors hover:text-[#171512] dark:text-zinc-400 dark:hover:text-zinc-50"
                 >
-                  {t('footer.privacy')}
+                  {t("footer.privacy")}
                 </Link>
               </li>
               <li>
@@ -99,7 +99,7 @@ export function Footer() {
                   href={`/${locale}/terms`}
                   className="text-[#5c534c] transition-colors hover:text-[#171512] dark:text-zinc-400 dark:hover:text-zinc-50"
                 >
-                  {t('footer.terms')}
+                  {t("footer.terms")}
                 </Link>
               </li>
             </ul>
@@ -118,6 +118,16 @@ export function Footer() {
                   className="text-[#5c534c] transition-colors hover:text-[#171512] dark:text-zinc-400 dark:hover:text-zinc-50"
                 >
                   Twitter
+                </a>
+              </li>
+              <li>
+                <a
+                  href={siteConfig.links.github}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#5c534c] transition-colors hover:text-[#171512] dark:text-zinc-400 dark:hover:text-zinc-50"
+                >
+                  GitHub
                 </a>
               </li>
               <li>
