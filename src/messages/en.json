@@ -519,8 +519,8 @@
       "connectionDetails": "Connection Details"
     },
     "security": {
-      "title": "Safe & Secure",
-      "description": "Your keys are only used once to set up. We never store them."
+      "title": "Open source",
+      "description": "ClawSimple's application code is open source, so you can review the deployment and install flows."
     },
     "card": {
       "title": "Profile",

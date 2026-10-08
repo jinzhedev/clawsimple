@@ -519,8 +519,8 @@
       "modelCostWarning": "⚠️ 此模型非常昂贵。您的 ${price}/月 AI 额度使用此模型只够发送约 {messageCount} 条消息。您可以随时在 Telegram 中通过 <command>/models</command> 命令切换到更便宜的模型。"
     },
     "security": {
-      "title": "安全透明",
-      "description": "您的 Key 仅用于初始化服务器。我们绝不保存。"
+      "title": "开源说明",
+      "description": "ClawSimple 的应用代码已开源，您可以查看部署和安装流程。"
     },
     "card": {
       "title": "个人中心",

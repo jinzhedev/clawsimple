@@ -520,8 +520,8 @@
       "connectionDetails": "接続の詳細"
     },
     "security": {
-      "title": "安全性と透明性",
-      "description": "あなたのキーはサーバーの初期化にのみ使用されます。保存されることはありません。"
+      "title": "オープンソース",
+      "description": "ClawSimple のアプリケーションコードはオープンソースです。デプロイとインストールの流れを確認できます。"
     },
     "card": {
       "title": "プロフィール",

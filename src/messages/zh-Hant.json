@@ -764,8 +764,8 @@
       "connectionDetails": "連接詳情"
     },
     "security": {
-      "title": "安全透明",
-      "description": "您的 Key 僅用於初始化伺服器。我們絕不保存。"
+      "title": "開源說明",
+      "description": "ClawSimple 的應用程式碼已開源，您可以查看部署和安裝流程。"
     }
   },
   "about": {
