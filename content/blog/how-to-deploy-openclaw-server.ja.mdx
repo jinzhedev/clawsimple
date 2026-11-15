@@ -2,6 +2,7 @@
 title: OpenClawサーバーを自分でデプロイする方法
 description: ワンクリック・スクリプトを使用して、ご自身のUbuntuサーバーにOpenClawをインストールするためのステップバイステップガイドです。
 date: 2026-02-03
+updated: 2026-11-15
 ---
 
 [ClawSimple](/)は便利なフルマネージドサービスを提供していますが、OpenClawをご自身のインフラストラクチャ上で無料で実行することも完全に自由です。
@@ -12,7 +13,7 @@ date: 2026-02-03
 
 始める前に、以下をご用意ください：
 
-1.  **新規Ubuntuサーバー**: Ubuntu 22.04 LTS以降を推奨します。2 vCPU / 4GB RAM 程度のスペックが良い出発点です（AWS, DigitalOcean, Hetzner, Sakura VPSなど）。
+1.  **新規Ubuntuサーバー**: Ubuntu 22.04 LTS以降を推奨します。OpenClawのNode.jsゲートウェイ単体なら 2 vCPU / 4GB RAM 程度が良い出発点です（クラウドAPIではなくサーバー上でローカルLLMも直接動かしたい場合は、事前に [LocalAIPicks](https://localaipicks.com/ja) で必要なメモリ・VRAM容量を確認してください）。AWS、DigitalOcean、Hetzner、さくらVPSなどで作成する際は、`api.telegram.org` と利用するAIプロバイダーの双方へ直接通信できるリージョンを選んでください（中国本土リージョンなど一部地域ではTelegramやOpenAIへの通信が制限されるため、[DoesItWorkInでの地域別接続ガイド](https://doesitworkin.com/china/chatgpt) も参考に東京やシンガポールなどのリージョンを選ぶのが安全です）。
 2.  **Rootアクセス**: SSHでサーバーに `root`（またはsudo権限）でログインできる必要があります。
 3.  **Telegram Bot Token**: Telegramの [@BotFather](https://t.me/BotFather) で新しいボットを作成し、API Tokenを取得してください。
 4.  **Telegram User ID**: 許可リスト（Allowlist）に自分を追加するために、ご自身の数値User IDを見つけてください（[@userinfobot](https://t.me/userinfobot) などで確認できます）。

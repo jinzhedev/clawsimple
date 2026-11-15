@@ -2,6 +2,7 @@
 title: How to Deploy Your Own OpenClaw Server
 description: A step-by-step guide to installing OpenClaw on your own Ubuntu server using our one-click script.
 date: 2026-02-03
+updated: 2026-11-15
 ---
 
 While [ClawSimple](/) offers a fully managed service for convenience, you are free to run OpenClaw on your own infrastructure for free.
@@ -12,7 +13,7 @@ This guide will walk you through setting up a self-hosted OpenClaw instance on a
 
 Before you begin, you will need:
 
-1.  **A Fresh Ubuntu Server**: We recommend Ubuntu 22.04 LTS or newer. A server with 2 vCPU and 4GB RAM is a good starting point. You can get one from providers like AWS, DigitalOcean, or Hetzner.
+1.  **A Fresh Ubuntu Server**: We recommend Ubuntu 22.04 LTS or newer. A server with 2 vCPU and 4GB RAM is a good starting point for the OpenClaw Node.js gateway itself (if you also want to host open-weight LLMs directly on the machine instead of calling cloud APIs, check [LocalAIPicks](https://localaipicks.com/) for real RAM/VRAM requirements first). Pick a region with direct outbound access to both `api.telegram.org` and your model provider—for example, Mainland China cloud regions block Telegram and OpenAI endpoints by default (see [ChatGPT availability in China on DoesItWorkIn](https://doesitworkin.com/china/chatgpt)), so choose an overseas region such as Singapore, Tokyo, Frankfurt, or US West on AWS, DigitalOcean, or Hetzner.
 2.  **Root Access**: You need SSH access to your server with `root` privileges (or `sudo` access).
 3.  **Telegram Bot Token**: Create a new bot with [@BotFather](https://t.me/BotFather) on Telegram and get your API Token.
 4.  **Telegram User ID**: Find your numeric User ID (e.g., via [@userinfobot](https://t.me/userinfobot)) to add yourself to the allowlist.

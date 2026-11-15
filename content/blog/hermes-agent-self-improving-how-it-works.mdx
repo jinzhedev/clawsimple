@@ -2,6 +2,7 @@
 title: "How Hermes Agent's Self-Improvement Works — And How to Use It"
 description: "Every ~15 tool calls, Hermes pauses to self-evaluate and writes what it learned into a reusable skill. Here's how the four-step agent loop works, three ways to feed it knowledge, and the learning resources worth your time."
 date: 2026-07-03
+updated: 2026-11-15
 image: /images/blog/hermes-self-improving.png
 ---
 
@@ -19,7 +20,7 @@ This is what separates Hermes from other agent frameworks. Not a stronger model.
 
 Once the context window hits 50%, Hermes triggers compression — summarizing existing messages rather than continuing to stack tokens. This mechanism is the key to running 24/7 without burning through your API budget.
 
-**Step 2: Tool execution.** Hermes ships with 17+ tools and 90 pre-installed skills, and both numbers grow as you use it. Standard agent loop: model decides which tool to call, executes, feeds the result back into context.
+**Step 2: Tool execution.** Hermes ships with 17+ tools and 90 pre-installed skills, and both numbers grow as you use it. Standard agent loop: model decides which tool to call, executes, feeds the result back into context. You can also extend that loop with external MCP servers for specialized creative or asset work—such as splitting character art into riggable layers with [Unmerge](https://unmerge.app/character-to-layers) or rewriting copy inside UI captures with [MakeItSay](https://makeitsay.com/edit-text-in-screenshot)—so the skills Hermes saves can automate multi-step visual pipelines too.
 
 **Step 3: Session management.** If you send another message while the agent is still processing the previous one, the session manager decides whether to interrupt or queue. Small detail, big impact on long-running agents — without it, concurrent messages would scramble the context.
 
@@ -51,7 +52,7 @@ You don't have to write skill files by hand. Hermes gives you three paths for fe
 
 **Getting practical — making it actually do things.**
 - [Sharbel A.: 6 Hermes Agent Workflows That Make It Actually Useful](https://www.youtube.com/watch?v=JFMxDgmW8cw) (July 1, 4,700 views): workflow design methodology, not "click this button." Key point: give the agent a system, or it "feels powerful but doesn't know what to do."
-- [AI LABS: Insane Ways To Make Your Hermes Agent Setup 90% Cheaper](https://www.youtube.com/watch?v=5d02TYoOzfE) (July 1, 7,100 views): cost optimization in practice. Covers compression threshold tuning, whether the default 150 max turns is too high, and how to pair local models with cloud models.
+- [AI LABS: Insane Ways To Make Your Hermes Agent Setup 90% Cheaper](https://www.youtube.com/watch?v=5d02TYoOzfE) (July 1, 7,100 views): cost optimization in practice. Covers compression threshold tuning, whether the default 150 max turns is too high, and how to pair local models with cloud models (for a quick setup, match local open-weight models to your GPU/RAM on [LocalAIPicks](https://localaipicks.com/) and route cloud fallback turns through a single pay-as-you-go key on [KeelRouter](https://keelrouter.com/)).
 
 **Going deeper — understanding how it runs.**
 - [Hugging Face: Hermes Architecture EXPLAINED: Memory, Context & Gateways](https://www.youtube.com/watch?v=n32qq7Kwzh0) (June 17, 63,331 views): the most complete technical breakdown. Four-layer memory, context building, session management, compression — not just for users, but for anyone who wants to build their own.

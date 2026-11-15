@@ -1,6 +1,7 @@
 ---
 title: Switching Models in OpenClaw
 date: 2026-02-10
+updated: 2026-11-15
 description: A quick guide on how to switch between different AI models using the /models command.
 image: /images/blog/switching-models.png
 ---
@@ -23,3 +24,9 @@ Your bot will confirm the switch, and all subsequent messages will be processed 
 > **Update (March 2026)**: The `/models` command now supports **BYOM (Bring Your Own Model)**! 
 >
 > You can now switch models on the fly even if you use your own API key. In the past, you needed to redeploy your bot with new model details, but now it's all handled dynamically.
+
+### BYOM Tips: Multi-Model Routing & Visual Tools
+
+If you bring your own API key, using an OpenAI-compatible gateway such as [KeelRouter](https://keelrouter.com/) lets you switch across chat, coding, and image models from a single balance instead of juggling separate provider accounts (see the [GPT Image 2.6 API pricing guide](https://keelrouter.com/guides/gpt-image-2-6-api-pricing) if your bot also generates images).
+
+For workflows where a general chat model isn't enough—such as decomposing character illustrations or updating copy inside UI captures—pair your bot with specialized MCP or HTTP endpoints like [Unmerge](https://unmerge.app/character-to-layers) for splitting character art into layers and [MakeItSay](https://makeitsay.com/edit-text-in-screenshot) for editing text directly inside screenshots.

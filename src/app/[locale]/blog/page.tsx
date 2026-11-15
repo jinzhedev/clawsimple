@@ -1,13 +1,25 @@
 import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { siteConfig } from "@/config/site";
+import { constructMetadata } from "@/lib/seo";
 import { blogSource } from "@/lib/source";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "Blog",
-  description:
-    "The latest updates, guides, and insights from the ClawSimple team.",
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "blog.listing" });
+
+  return constructMetadata({
+    title: `${t("title")} - ${siteConfig.name}`,
+    description: t("description"),
+    locale,
+    path: "/blog",
+  });
+}
 
 export default async function BlogListingPage({
   params,

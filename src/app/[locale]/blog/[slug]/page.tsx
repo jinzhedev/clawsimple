@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
+import { siteConfig } from "@/config/site";
+import { constructMetadata } from "@/lib/seo";
 import { blogSource } from "@/lib/source";
 import { BlogCTA } from "@/components/blog/blog-cta";
 import { locales } from "@/lib/i18n/config";
@@ -37,13 +39,36 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = data?.title ?? slug;
   const description = data?.description ?? "";
 
-  return {
+  const availableLocales = locales.filter((l) =>
+    Boolean(blogSource.getPage([l, slug])),
+  );
+  const languages: Record<string, string> = Object.fromEntries(
+    availableLocales.map((l) => [l, `${siteConfig.url}/${l}/blog/${slug}`]),
+  );
+  if (availableLocales.includes("en")) {
+    languages["x-default"] = `${siteConfig.url}/en/blog/${slug}`;
+  } else if (availableLocales[0]) {
+    languages["x-default"] =
+      `${siteConfig.url}/${availableLocales[0]}/blog/${slug}`;
+  }
+
+  const baseMeta = constructMetadata({
     title,
     description,
+    locale,
+    path: `/blog/${slug}`,
+    ...(data?.image ? { image: data.image } : {}),
+  });
+
+  return {
+    ...baseMeta,
+    openGraph: {
+      ...baseMeta.openGraph,
+      type: "article",
+    },
     alternates: {
-      languages: Object.fromEntries(
-        locales.map((l) => [l, `/${l}/blog/${slug}`]),
-      ),
+      canonical: `${siteConfig.url}/${locale}/blog/${slug}`,
+      languages,
     },
   };
 }

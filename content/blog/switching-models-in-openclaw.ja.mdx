@@ -1,13 +1,12 @@
 ---
 title: OpenClawでモデルを切り替える
 date: 2026-02-10
+updated: 2026-11-15
 description: /modelsコマンドを使用して、異なるAIモデルを切り替える方法のクイックガイド。
 image: /images/blog/switching-models.png
 ---
 
-```mdx
 [ClawSimple](/)のマネージドデプロイメント（3つのモデルが事前設定済み）により、OpenClawではTelegramボットから直接、AIモデルを即座に切り替えることができます。
-```
 
 ![モデルの切り替え](/images/blog/switching-models.png)
 
@@ -25,3 +24,9 @@ image: /images/blog/switching-models.png
 > **［2026年3月 更新］**: 朗報です！`/models` コマンドが **BYOM（モデル持参）** プランにも対応しました！
 >
 > 自前のAPIキーを持参している場合でも、Telegram上でいつでも動的にモデルを切り替えられるようになりました。過去のように再デプロイすることなく、チャット内で自動的に完結します。
+
+### BYOM活用のコツ：マルチモデルルーティングと画像系ツールの連携
+
+自前のAPIキーで運用する場合、[KeelRouter](https://keelrouter.com/) のようなOpenAI互換ルーターを使うと、1つのAPIキーと残高で複数のチャット・画像生成モデルを切り替えられるため、プロバイダーごとの個別契約やキー管理の手間を省けます。
+
+また、汎用チャットモデルだけでは難しい専門的な画像処理が必要な場合は、キャラクター立ち絵をレイヤー分解する [Unmerge（一枚絵のAIパーツ分け）](https://unmerge.app/ja/character-to-layers) や、フォントを維持したまま画像内の文字を書き換える [MakeItSay（スクリーンショット内の文字編集）](https://makeitsay.com/ja/edit-text-in-screenshot) などの専用API・MCPツールを組み合わせると実務の幅が広がります。

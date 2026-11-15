@@ -2,6 +2,7 @@
 title: 如何部署您自己的 OpenClaw 伺服器
 description: 使用我們的一鍵安裝腳本，在您自己的 Ubuntu 伺服器上輕鬆部署 OpenClaw 的詳細指南。
 date: 2026-02-03
+updated: 2026-11-15
 ---
 
 雖然 [ClawSimple](/) 提供了便捷的全託管服務，但您完全可以免費在自己的基礎設施上運行 OpenClaw。
@@ -12,7 +13,7 @@ date: 2026-02-03
 
 在開始之前，您需要準備：
 
-1.  **一台全新的 Ubuntu 伺服器**：推薦 Ubuntu 22.04 LTS 或更新版本。2核心 vCPU 和 4GB記憶體的配置是一個不錯的起點（例如阿里雲、騰訊雲、AWS 或 Hetzner）。
+1.  **一台全新的 Ubuntu 伺服器**：推薦 Ubuntu 22.04 LTS 或更新版本。僅運行 OpenClaw 的 Node.js 閘道時，2 核心 vCPU 和 4GB 記憶體是一個不錯的起點（若打算在同一台機器上直接跑本地開源模型，建議先到 [LocalAIPicks](https://localaipicks.com/) 查詢模型實際所需的顯存與記憶體規格）。選擇機房時請確認伺服器能直接連線 `api.telegram.org` 與模型供應商 API——例如中國內地機房預設無法直連 Telegram 與 OpenAI（可參考 [DoesItWorkIn 的跨境連通性整理](https://doesitworkin.com/china/chatgpt)），建議選擇東京、新加坡、法蘭克福或美西等海外區域（如 AWS、DigitalOcean 或 Hetzner）。
 2.  **Root 權限**：您需要擁有伺服器的 `root` 權限（或 sudo 權限）以便通過 SSH 登入。
 3.  **Telegram Bot Token**：通過 Telegram 上的 [@BotFather](https://t.me/BotFather) 創建一個新機器人並獲取 API Token。
 4.  **Telegram User ID**：找到您的數字 User ID（可以通過 [@userinfobot](https://t.me/userinfobot) 查看），以便將自己加入白名單。

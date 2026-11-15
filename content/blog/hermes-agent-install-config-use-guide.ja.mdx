@@ -2,6 +2,7 @@
 title: "Hermes Agent セットアップガイド：インストール、設定、よくある落とし穴"
 description: "Hermes Agent のインストール、モデルキー、Telegram gateway、skills、ブラウザ、Docker、Termux、Windows、ローカルモデル、OpenClaw 移行をまとめた実用ガイドです。"
 date: 2026-04-27
+updated: 2026-11-15
 ---
 
 Hermes Agent は最近注目されています。チャット agent、メモリ、skills、ツール、messaging gateway、terminal backends が1つのプロジェクトにまとまっているからです。
@@ -67,7 +68,7 @@ hermes config check
 hermes config migrate
 ```
 
-ガイド付きでモデルを選びたい場合は `hermes model` を使います。具体的な key や設定名が分かっている場合は `hermes config set` を使います。
+ガイド付きでモデルを選びたい場合は `hermes model` を使います。具体的な key や設定名が分かっている場合は `hermes config set` を使います。`~/.hermes/.env` に複数のプロバイダーキーを個別に管理する代わりに、1つのOpenAI互換キーとプリペイド残高でチャット・コーディング・画像生成モデルをまとめて使いたい場合は、[KeelRouter](https://keelrouter.com/) のような統合ルーターを指定する方法もあります。
 
 ## Telegram または他の gateway を設定する
 
@@ -148,7 +149,7 @@ Headless browser は bot detection に引っかかることがあります。一
 
 ### ローカルモデルは会話できるのに、なぜツールを呼ばないのですか？
 
-ツール呼び出しはモデル、provider adapter、prompt 形式、Hermes 設定に依存します。コミュニティでは、一部ローカルモデルが会話はできても tool use が不安定という報告があります。まず動作確認済みの hosted model で tool path を確認し、その後ローカルモデルに切り替えて比較します。
+ツール呼び出しはモデル、provider adapter、prompt 形式、Hermes 設定に依存します。コミュニティでは、一部ローカルモデルが会話はできても、過度な量子化やVRAM不足でコンテキストがあふれると tool use が急に不安定になるという報告があります。まずは [LocalAIPicks](https://localaipicks.com/ja) で自分のGPU・メモリ容量に無理なく収まるオープンモデルを確認し、動作確認済みの hosted model で tool path を試してからローカルモデルに切り替えて比較すると切り分けがスムーズです。
 
 ### Hermes にネイティブ multi-agent support はありますか？
 

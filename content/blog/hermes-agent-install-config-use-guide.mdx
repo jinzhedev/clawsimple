@@ -2,6 +2,7 @@
 title: "Hermes Agent Setup Guide: Install, Configure, and Avoid the Common Traps"
 description: "A practical Hermes Agent guide covering installation, model keys, Telegram gateway setup, skills, browser use, Docker, Termux, Windows, local models, and migration from OpenClaw."
 date: 2026-04-27
+updated: 2026-11-15
 ---
 
 Hermes Agent has been getting more attention because it combines a chat agent, memory, skills, tools, messaging gateways, and terminal backends in one project.
@@ -67,7 +68,7 @@ hermes config check
 hermes config migrate
 ```
 
-Use `hermes model` when you want the guided model picker. Use `hermes config set` when you already know the exact key or setting.
+Use `hermes model` when you want the guided model picker. Use `hermes config set` when you already know the exact key or setting. If you want one OpenAI-compatible key that covers frontier chat, coding, and image models from a single prepaid balance instead of maintaining separate provider secrets in `~/.hermes/.env`, you can also point Hermes at a unified gateway like [KeelRouter](https://keelrouter.com/).
 
 ## Set up Telegram or another gateway
 
@@ -148,7 +149,7 @@ Headless browsers can hit bot detection. Some users work around this by connecti
 
 ### Why do local models answer normally but ignore tools?
 
-Tool use depends on the model, provider adapter, prompt format, and Hermes configuration. Community reports show that some local models can chat but fail to call tools reliably. Test with a known working hosted model first. After the tool path works, switch to the local model and compare.
+Tool use depends on the model, provider adapter, prompt format, and Hermes configuration. Community reports show that some local models can chat but fail to call tools reliably—especially when aggressive quantization or context growth pushes the model past your GPU or unified memory budget. Check [LocalAIPicks](https://localaipicks.com/) to verify which open-weight tool-calling models fit your exact RAM/VRAM hardware, test with a known working hosted model first, and then switch to the local model to compare.
 
 ### Does Hermes have native multi-agent support?
 

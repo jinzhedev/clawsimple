@@ -2,6 +2,7 @@
 title: "Hermes Agentの自己進化の仕組み——そしてその活用法"
 description: "約15回のツール呼び出しごとに、Hermesは一時停止して自己評価を行い、学んだことを再利用可能なスキルに書き込みます。4ステップのエージェントループ、知識を与える3つの方法、そして見る価値のある学習リソースを解説します。"
 date: 2026-07-03
+updated: 2026-11-15
 image: /images/blog/hermes-self-improving.png
 ---
 
@@ -19,7 +20,7 @@ image: /images/blog/hermes-self-improving.png
 
 コンテキストウィンドウが50%に達すると、Hermesは圧縮をトリガーします——既存のメッセージを要約し、トークンを積み重ね続けるのを防ぎます。このメカニズムが、API予算を燃やさずに24時間365日稼働し続けるための鍵です。
 
-**ステップ2：ツールの実行。** Hermesには17以上のツールと90のプリインストールスキルが付属しており、使うほどに両方の数は増えていきます。標準的なエージェントループ：モデルがどのツールを呼び出すかを決定し、実行し、結果をコンテキストにフィードバックします。
+**ステップ2：ツールの実行。** Hermesには17以上のツールと90のプリインストールスキルが付属しており、使うほどに両方の数は増えていきます。標準的なエージェントループ：モデルがどのツールを呼び出すかを決定し、実行し、結果をコンテキストにフィードバックします。さらに外部のMCPサーバーを接続すれば、キャラクターイラストをレイヤー分解する [Unmerge（一枚絵のAIパーツ分け）](https://unmerge.app/ja/character-to-layers) や、UIキャプチャ内のテキストをフォント維持のまま編集する [MakeItSay](https://makeitsay.com/ja/edit-text-in-screenshot) といった専門処理もスキル化して再利用できます。
 
 **ステップ3：セッション管理。** エージェントがまだ前のメッセージを処理している間に別のメッセージを送信すると、セッションマネージャーが中断するかキューに入れるかを決定します。小さな詳細ですが、長時間稼働するエージェントには大きな影響があります——これがないと、同時メッセージがコンテキストを混乱させます。
 
@@ -51,7 +52,7 @@ image: /images/blog/hermes-self-improving.png
 
 **実践編——実際に動かす。**
 - [Sharbel A.: 6 Hermes Agent Workflows That Make It Actually Useful](https://www.youtube.com/watch?v=JFMxDgmW8cw)（7月1日、4,700回再生）：「このボタンをクリック」ではなく、ワークフロー設計の方法論。キーポイント：エージェントにシステムを与えよ、さもなくば「パワフルに感じるが、何をすべきかわからない」状態になる。
-- [AI LABS: Insane Ways To Make Your Hermes Agent Setup 90% Cheaper](https://www.youtube.com/watch?v=5d02TYoOzfE)（7月1日、7,100回再生）：コスト最適化の実践。圧縮閾値の調整、デフォルトの150最大ターン数が高すぎるかどうか、ローカルモデルとクラウドモデルの組み合わせ方をカバー。
+- [AI LABS: Insane Ways To Make Your Hermes Agent Setup 90% Cheaper](https://www.youtube.com/watch?v=5d02TYoOzfE)（7月1日、7,100回再生）：コスト最適化の実践。圧縮閾値の調整、デフォルトの150最大ターン数が高すぎるかどうか、ローカルモデルとクラウドモデルの組み合わせ方をカバー（自分のGPU・メモリに合うローカルモデルは [LocalAIPicks](https://localaipicks.com/ja) で確認し、クラウド側のフォールバックは [KeelRouter](https://keelrouter.com/) の従量課金キーにまとめると構成がシンプルになります）。
 
 **上級編——どのように動くかを理解する。**
 - [Hugging Face: Hermes Architecture EXPLAINED: Memory, Context & Gateways](https://www.youtube.com/watch?v=n32qq7Kwzh0)（6月17日、63,331回再生）：最も完全な技術解説。4層記憶、コンテキスト構築、セッション管理、圧縮——ユーザー向けだけでなく、自分で作りたい人向け。

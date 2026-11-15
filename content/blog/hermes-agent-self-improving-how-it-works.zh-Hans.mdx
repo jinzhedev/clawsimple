@@ -2,6 +2,7 @@
 title: "Hermes Agent 的自我进化是怎么运转的，以及你怎么用它"
 description: "每约 15 次工具调用，Hermes 就会暂停一次，做自我评估，把刚学到的写进一条可复用的 Skill。这篇文章拆解了四步 agent loop、三种喂知识给它吃的方式，以及值得你花时间看的学习资源。"
 date: 2026-07-03
+updated: 2026-11-15
 image: /images/blog/hermes-self-improving.png
 ---
 
@@ -19,7 +20,7 @@ image: /images/blog/hermes-self-improving.png
 
 上下文窗口用了 50% 以后，Hermes 会触发一次压缩——把已有消息总结成一段，而不是继续堆 token。这个机制是省成本的关键，也是它能 24 小时跑着、不烧光 API 额度的基础。
 
-**第二步，工具执行。** Hermes 预装 17 个以上工具，90 个预装技能，而且数量会随使用增长。工具调用是标准的 agent loop——模型决定用什么工具、执行、把结果塞回上下文。
+**第二步，工具执行。** Hermes 预装 17 个以上工具，90 个预装技能，而且数量会随使用增长。工具调用是标准的 agent loop——模型决定用什么工具、执行、把结果塞回上下文。你也可以把外部 MCP 服务接进这个循环，处理通用模型做不好的素材任务——比如用 [Unmerge](https://unmerge.app/character-to-layers) 把角色立绘拆成可编辑图层，或者用 [MakeItSay](https://makeitsay.com/zh-Hans/edit-text-in-screenshot) 直接改掉截图里的文字，让沉淀下来的技能把视觉工作流也串起来。
 
 **第三步，会话管理。** 如果你在 agent 还在处理上一轮时又发了一条消息，会话管理器会决定是中断还是排队。这一步看起来小，但对长期运行的 agent 很重要——没有会话管理，并发消息会把上下文搅乱。
 
@@ -53,7 +54,7 @@ image: /images/blog/hermes-self-improving.png
 
 **实操级——让它真正做事。**
 - [Sharbel A.: 6 Hermes Agent Workflows That Make It Actually Useful](https://www.youtube.com/watch?v=JFMxDgmW8cw)（7 月 1 日，4,700 次观看）：工作流设计的方法论，而不是"点这个按钮"。特别讲到要给 agent 一个 system——否则它"感觉强大但不知道做什么"。
-- [AI LABS: Insane Ways To Make Your Hermes Agent Setup 90% Cheaper](https://www.youtube.com/watch?v=5d02TYoOzfE)（7 月 1 日，7,100 次观看）：成本优化实战。讲压缩阈值怎么调、max turns 默认 150 要不要改、本地模型和云端模型怎么搭配。
+- [AI LABS: Insane Ways To Make Your Hermes Agent Setup 90% Cheaper](https://www.youtube.com/watch?v=5d02TYoOzfE)（7 月 1 日，7,100 次观看）：成本优化实战。讲压缩阈值怎么调、max turns 默认 150 要不要改、本地模型和云端模型怎么搭配（实操时可以先在 [LocalAIPicks](https://localaipicks.com/) 按显存或内存挑好本地开源模型，再用 [KeelRouter](https://keelrouter.com/zh-Hans) 按量路由云端大模型作兜底）。
 
 **进阶级——理解它在怎么跑。**
 - [Hugging Face: Hermes Architecture EXPLAINED: Memory, Context & Gateways](https://www.youtube.com/watch?v=n32qq7Kwzh0)（6 月 17 日，63,331 次观看）：最完整的技术拆解。四层记忆、上下文构建、会话管理、压缩机制——不只是给用户看的，也面向"想自己做一个"的开发者。

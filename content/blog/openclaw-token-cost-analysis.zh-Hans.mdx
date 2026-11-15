@@ -2,6 +2,7 @@
 title: "别再被 AI 账单吓到：为什么消耗这么快，以及如何划算地使用 OpenClaw"
 description: "结合社区实战反馈，拆解 AI 助手的 Token 账单黑洞，并对比目前主流的计费方案，教你省钱妙招。"
 date: 2026-03-04
+updated: 2026-11-15
 image: /images/blog/switching-models.png
 ---
 
@@ -58,6 +59,10 @@ image: /images/blog/switching-models.png
 | 阿里百炼国际版 | 阿里云国际站 | Basic $10、Pro $50 | Qwen 系列、Claude 等 | **固定包**：Basic 每月 18,000 次；Pro 每月 90,000 次 |
 
 > 如果你使用 API Key（按使用量计费）：单次看起来非常便宜（不到一美分），但如果没有预算限制，新手容易在长对话中不知不觉花掉很多钱。推荐新手先使用上面有“上限控制”的包月服务或配额包。
+
+如果你既想要自带 API Key（BYOM）跨模型切换的灵活性，又不想绑定信用卡承担无上限账单风险，可以采用下面两种折中做法：
+- **预充值多模型路由**：使用类似 [KeelRouter 计费方案](https://keelrouter.com/zh-Hans/pricing) 的兼容 OpenAI 接口网关，充多少用多少，账户余额本身就是硬性预算上限，同时能用一个 Key 在轻量模型与旗舰模型之间按需切换。
+- **高频小任务下放本地模型**：把日常摘要、简单排错交给本地开源模型处理，可先在 [LocalAIPicks](https://localaipicks.com/) 按你的显卡显存或 Mac 统一内存容量挑选跑得动的模型。
 
 ## 四、给 OpenClaw 用户的实用结论
 

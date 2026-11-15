@@ -2,6 +2,7 @@
 title: "Hermes Agent 安装配置指南：先避开这些常见问题"
 description: "一篇面向 Hermes Agent 新用户的实用指南，覆盖安装、模型密钥、Telegram gateway、skills、浏览器、Docker、Termux、Windows、本地模型和 OpenClaw 迁移。"
 date: 2026-04-27
+updated: 2026-11-15
 ---
 
 Hermes Agent 最近被更多人关注，因为它把聊天 agent、记忆、skills、工具、消息 gateway 和 terminal backends 放在一个项目里。
@@ -67,7 +68,7 @@ hermes config check
 hermes config migrate
 ```
 
-想用引导式模型选择，就用 `hermes model`。已经知道具体 key 或配置项，就用 `hermes config set`。
+想用引导式模型选择，就用 `hermes model`。已经知道具体 key 或配置项，就用 `hermes config set`。如果你不想在 `~/.hermes/.env` 里分别维护多家厂商的密钥，也可以接入 [KeelRouter](https://keelrouter.com/zh-Hans) 这类兼容 OpenAI 接口的多模型网关，用一个预充值 Key 统一调用主流对话、编程与生图模型。
 
 ## 设置 Telegram 或其他 gateway
 
@@ -148,7 +149,7 @@ Headless browser 可能触发 bot detection。有些用户会通过 CDP 连接�
 
 ### 为什么本地模型能聊天，却不会调用工具？
 
-工具调用取决于模型、provider adapter、prompt 格式和 Hermes 配置。社区反馈里，有些本地模型可以聊天，但工具调用不稳定。先用已知可用的 hosted model 测通工具链，再切回本地模型对比。
+工具调用取决于模型、provider adapter、prompt 格式和 Hermes 配置。社区反馈里，有些本地模型可以聊天，但在量化压缩过重或上下文超出显存预算时，工具调用会明显失效。建议先在 [LocalAIPicks](https://localaipicks.com/) 按你的显存或统一内存容量筛选适合工具调用的开源模型，并用已知可用的 hosted model 测通工具链后，再切回本地模型对比。
 
 ### Hermes 有原生 multi-agent 支持吗？
 

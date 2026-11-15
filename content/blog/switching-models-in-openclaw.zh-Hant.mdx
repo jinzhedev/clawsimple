@@ -1,6 +1,7 @@
 ---
 title: 在 OpenClaw 中切換模型
 date: 2026-02-10
+updated: 2026-11-15
 description: 快速指南：如何使用 /models 命令在不同的 AI 模型之間切換。
 image: /images/blog/switching-models.png
 ---
@@ -23,3 +24,9 @@ image: /images/blog/switching-models.png
 > **[2026年3月 更新]**：`/models` 命令現在已經支持 **BYOM (自帶模型)** 用戶！
 >
 > 即便您自帶 API Key，現在也可以隨時在 Telegram 中動態切換模型了。過去您需要重新部署機器人才能切換，現在一切都在聊天中自動完成。
+
+### BYOM 實用技巧：多模型路由與視覺工具搭配
+
+如果您使用自帶 API Key（BYOM），接入 [KeelRouter](https://keelrouter.com/) 這類相容 OpenAI 介面的多模型路由閘道，可以用同一組金鑰與餘額在不同廠商的對話、程式與生圖模型之間自由切換，不必分別管理多家供應商帳號。
+
+當工作流程遇到通用對話模型較難處理的精細影像任務時，也可以搭配支援 API / MCP 的專項工具——例如使用 [Unmerge](https://unmerge.app/character-to-layers) 將角色立繪拆分為可編輯圖層，或透過 [MakeItSay](https://makeitsay.com/zh-Hant/edit-text-in-screenshot) 在保留原本字體與背景的情況下直接修改截圖文字。
